@@ -813,7 +813,7 @@ def start_backend(senha):
 # Modo: "online"  → carrega do site (requer internet, .exe simples)
 #       "local"   → carrega do dist/ local (requer npm build)
 UI_MODE = "online"
-UI_URL  = "https://anucio-web.web.app"   # ← sua URL do Firebase Hosting
+UI_URL  = "https://playads-app.web.app/"   # ← sua URL do Firebase Hosting
 
 def get_ui_url():
     if UI_MODE == "online":

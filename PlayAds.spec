@@ -1,45 +1,46 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PlayAds.spec — Modo ONLINE (interface carrega do site)
-# Uso: pyinstaller PlayAds.spec
+from PyInstaller.utils.hooks import collect_all
 
-block_cipher = None
+datas = []
+binaries = []
+hiddenimports = ['webview', 'webview.platforms.winforms']
+tmp_ret = collect_all('webview')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+
 
 a = Analysis(
     ['player.py'],
     pathex=[],
-    binaries=[],
-    datas=[],        # Sem dist/ — interface vem da internet
-    hiddenimports=[
-        'webview',
-        'webview.platforms.winforms',
-        'clr',
-        'pygame',
-        'pygame.mixer',
-        'requests',
-        'certifi',
-        'charset_normalizer',
-        'urllib3',
-        'idna',
-    ],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
+    hooksconfig={},
     runtime_hooks=[],
     excludes=[],
-    cipher=block_cipher,
+    noarchive=False,
+    optimize=0,
 )
-
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
-    a.zipfiles,
     a.datas,
     [],
     name='PlayAds',
     debug=False,
+    bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,   # Sem terminal — app GUI
-    icon='icon.ico' if __import__('os').path.exists('icon.ico') else None,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=['logo PlayAds.ico'],
 )
