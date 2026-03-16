@@ -1,1 +1,56 @@
-{}
+{
+  "-Onn8D3Oo8Ennn_Kbmph": {
+    "ativa": true,
+    "criado_em": 1773605806469,
+    "itens": [
+      {
+        "horario": "17:19",
+        "horarios": [
+          "17:19",
+          "17:21"
+        ],
+        "loops": 1,
+        "nome": "5 andar sem filas",
+        "tipo": "audio/wav",
+        "url": "https://firebasestorage.googleapis.com/v0/b/anucio-web.firebasestorage.app/o/users%2Fadm%40gmail%2Ccom%2Faudios%2F1773605814850_5_andar_sem_filas.wav?alt=media&token=13487bd0-90d9-416b-b5b0-4f5bbdb364eb"
+      },
+      {
+        "horario": "10:04",
+        "horarios": [
+          "10:04"
+        ],
+        "loops": 1,
+        "nome": "4 andar sem filas",
+        "tipo": "audio/wav",
+        "url": "https://firebasestorage.googleapis.com/v0/b/anucio-web.firebasestorage.app/o/users%2Fadm%40gmail%2Ccom%2Faudios%2F1773665979343_4_andar_sem_filas.wav?alt=media&token=edb2da97-1f9a-4ee6-a9c3-0d2007ca8101"
+      }
+    ],
+    "nome": "Adm"
+  },
+  "-OnnB3yyTtpqbCHUvIrc": {
+    "ativa": true,
+    "criado_em": 1773606555690,
+    "itens": [
+      {
+        "dias": [
+          "seg",
+          "ter",
+          "qua",
+          "qui",
+          "sex",
+          "sab",
+          "dom"
+        ],
+        "horario": "10:43",
+        "horarios": [
+          "10:43"
+        ],
+        "loops": 1,
+        "nome": "4 andar sem filas",
+        "tipo": "audio/wav",
+        "url": "https://firebasestorage.googleapis.com/v0/b/anucio-web.firebasestorage.app/o/users%2Fadm%40gmail%2Ccom%2Faudios%2F1773606582540_4_andar_sem_filas.wav?alt=media&token=39d6e2e4-2fe5-49a0-b4f4-f98a9d892796"
+      }
+    ],
+    "nome": "tetse"
+  }
+}

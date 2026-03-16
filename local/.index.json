@@ -1,16 +1,23 @@
 {
-  "f9f239eb9410311a4eecf58498dc47ce": {
-    "path": "C:\\Users\\micae\\Documents\\playads-v7\\playads-zip\\local\\f9f239eb9410311a4eecf58498dc47ce.wav",
-    "nome": "1 andar sem filas",
+  "6b7681d0e34c3463fff11ac226d6c8bd": {
+    "path": "c:\\Users\\micae\\Documents\\playads-v7\\playads-zip\\local\\6b7681d0e34c3463fff11ac226d6c8bd.wav",
+    "nome": "5 andar sem filas",
     "tipo": "WAV",
-    "ts": 1773595057,
-    "tamanho": 909390
+    "ts": 1773605968,
+    "tamanho": 852046
   },
-  "ad0f1e922eb6f861b14fcb271360198b": {
-    "path": "c:\\Users\\micae\\Documents\\playads-v7\\playads-zip\\local\\ad0f1e922eb6f861b14fcb271360198b.wav",
+  "dcc830c0da67db4e610a5f3e131169dd": {
+    "path": "c:\\Users\\micae\\Documents\\playads-v7\\playads-zip\\local\\dcc830c0da67db4e610a5f3e131169dd.wav",
     "nome": "4 andar sem filas",
     "tipo": "WAV",
-    "ts": 1773599599,
+    "ts": 1773606705,
+    "tamanho": 860238
+  },
+  "7efef98bda294829a138bf94487fc6f3": {
+    "path": "c:\\Users\\micae\\Documents\\playads-v7\\playads-zip\\local\\7efef98bda294829a138bf94487fc6f3.wav",
+    "nome": "4 andar sem filas",
+    "tipo": "WAV",
+    "ts": 1773666257,
     "tamanho": 860238
   }
 }

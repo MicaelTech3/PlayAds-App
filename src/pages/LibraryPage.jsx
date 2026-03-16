@@ -6,18 +6,30 @@ function MediaModal({ item, onClose, playlists }) {
   const [loops, setLoops] = useState(1);
 
   const schedules = useMemo(() => {
+    // Usa _schedDetails pré-computados se disponível
+    if (item?._schedDetails) {
+      return [...item._schedDetails].sort((a, b) => (a.horario || "").localeCompare(b.horario || ""));
+    }
+    // Fallback: calcula na hora
     const results = [];
     const url = item?.url || "";
     if (!url) return results;
     Object.values(playlists || {}).forEach((pl) => {
       if (!pl || typeof pl !== "object") return;
       (pl.itens || []).forEach((it) => {
-        if (it?.url === url && it?.horario) {
-          results.push({ horario: it.horario, playlist: pl.nome || "?", loops: it.loops || 1 });
+        if (it?.url === url) {
+          const hrs = Array.isArray(it.horarios) && it.horarios.length > 0
+            ? it.horarios : it.horario ? [it.horario] : [];
+          hrs.forEach(h => results.push({
+            horario: h,
+            dias: it.dias || [],
+            loops: it.loops || 1,
+            playlist: pl.nome || "?",
+          }));
         }
       });
     });
-    return results.sort((a, b) => a.horario.localeCompare(b.horario));
+    return results.sort((a, b) => (a.horario || "").localeCompare(b.horario || ""));
   }, [item, playlists]);
 
   const play = () => {
@@ -92,16 +104,33 @@ function MediaModal({ item, onClose, playlists }) {
             </div>
             {schedules.length > 0 ? (
               schedules.map((s, i) => (
-                <div key={i} className="sched-item">
-                  <div className="sched-time">{s.horario}</div>
-                  <div style={{ flex: 1 }}>
-                    <div className="sched-pl">{s.playlist}</div>
+                <div key={i} className="sched-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                    <div className="sched-time">{s.horario}</div>
+                    <div style={{ flex: 1 }}>
+                      <div className="sched-pl">{s.playlist}</div>
+                    </div>
+                    <div className="sched-loops">{s.loops}× loop</div>
+                    {s.horario > now && (
+                      <span style={{ fontSize: 9, padding: "2px 7px", background: "rgba(52,211,153,0.1)", color: "var(--green)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: 99, fontFamily: "var(--font-mono)" }}>
+                        próx
+                      </span>
+                    )}
                   </div>
-                  <div className="sched-loops">{s.loops}× loop</div>
-                  {s.horario > now && (
-                    <span style={{ fontSize: 9, padding: "2px 7px", background: "rgba(52,211,153,0.1)", color: "var(--green)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: 99, fontFamily: "var(--font-mono)" }}>
-                      próx
-                    </span>
+                  {Array.isArray(s.dias) && s.dias.length > 0 && s.dias.length < 7 && (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {["dom","seg","ter","qua","qui","sex","sab"].map(d => (
+                        <span key={d} style={{
+                          fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700,
+                          padding: "2px 6px", borderRadius: 5,
+                          background: s.dias.includes(d) ? "rgba(139,92,246,0.18)" : "var(--surface3)",
+                          color: s.dias.includes(d) ? "var(--p1)" : "var(--muted)",
+                          border: `1px solid ${s.dias.includes(d) ? "rgba(139,92,246,0.3)" : "var(--border)"}`,
+                        }}>
+                          {d.charAt(0).toUpperCase() + d.slice(1)}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
               ))
@@ -223,11 +252,25 @@ export default function LibraryPage() {
       .map((item) => {
         const url = item.url || item.path || "";
         let sc = 0;
+        const schedDetails = [];
         Object.values(playlists || {}).forEach((pl) => {
           if (!pl?.itens) return;
-          pl.itens.forEach((it) => { if (it?.url === url) sc++; });
+          pl.itens.forEach((it) => {
+            if (it?.url === url) {
+              sc++;
+              const hrs = Array.isArray(it.horarios) && it.horarios.length > 0
+                ? it.horarios
+                : it.horario ? [it.horario] : [];
+              hrs.forEach(h => schedDetails.push({
+                horario: h,
+                dias: it.dias || [],
+                loops: it.loops || 1,
+                playlist: pl.nome || "?",
+              }));
+            }
+          });
         });
-        return { ...item, _schedCount: sc };
+        return { ...item, _schedCount: sc, _schedDetails: schedDetails };
       });
   }, [tab, localFiles, anuncios, playlists, query]);
 

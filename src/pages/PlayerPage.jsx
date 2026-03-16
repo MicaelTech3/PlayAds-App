@@ -82,13 +82,19 @@ export default function PlayerPage() {
   const { playing, currentTrack, currentPlaylist, status, elapsed, progress, config, cacheInfo, hasPycaw, hasYtdlp, connStatus } = state;
 
   const [logs, setLogs] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     // Subscribe to internal log events via polling
   }, []);
 
-  const handleStop = () => call("cmd_stop");
+  const handleStop     = () => call("cmd_stop");
   const handlePrecache = () => call("cmd_precache");
+  const handleRefresh  = () => {
+    setRefreshing(true);
+    call("cmd_refresh");
+    setTimeout(() => setRefreshing(false), 2000);
+  };
 
   const statusLabel =
     status === "playing" ? "▶ REPRODUZINDO" :
@@ -104,12 +110,44 @@ export default function PlayerPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       {/* Header */}
       <div className="page-header">
         <div className="page-header-accent" style={{ background: "var(--p2)" }} />
         <span className="page-title" style={{ color: "var(--p1)" }}>Player</span>
         <span className="page-sub">Central de Reprodução</span>
         <div className="page-header-right">
+          {/* Refresh button */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "5px 12px",
+              background: "var(--surface2)",
+              border: "1px solid var(--border)",
+              borderRadius: "99px",
+              fontSize: 11,
+              fontFamily: "var(--font-mono)",
+              color: refreshing ? "var(--p1)" : "var(--muted2)",
+              cursor: refreshing ? "default" : "pointer",
+              transition: "all 0.2s",
+            }}
+            title="Sincronizar dados do Firebase"
+          >
+            <svg
+              width="11" height="11" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2"
+              style={{ animation: refreshing ? "spin 0.8s linear infinite" : "none" }}
+            >
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            {refreshing ? "Atualizando..." : "Atualizar"}
+          </button>
+
+          {/* Status chip */}
           <div
             style={{
               display: "flex", alignItems: "center", gap: 7,
