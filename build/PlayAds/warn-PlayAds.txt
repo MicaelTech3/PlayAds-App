@@ -182,8 +182,6 @@ missing module named 'mutagen.oggvorbis' - imported by yt_dlp.postprocessor.embe
 missing module named 'mutagen.oggopus' - imported by yt_dlp.postprocessor.embedthumbnail (conditional)
 missing module named 'mutagen.mp4' - imported by yt_dlp.postprocessor.embedthumbnail (conditional)
 missing module named 'mutagen.flac' - imported by yt_dlp.postprocessor.embedthumbnail (conditional)
-missing module named 'comtypes.gen' - imported by comtypes.client._generate (delayed, conditional)
-missing module named comtypes.gen - imported by comtypes (delayed), comtypes.client._code_cache (delayed, optional), comtypes.client (top-level)
 missing module named numpy._core.void - imported by numpy._core (conditional), numpy (conditional)
 missing module named numpy._core.vecmat - imported by numpy._core (conditional), numpy (conditional)
 missing module named numpy._core.ushort - imported by numpy._core (conditional), numpy (conditional)
