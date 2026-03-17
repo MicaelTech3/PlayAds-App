@@ -21,10 +21,27 @@ imports:
     <a href="#_collections_abc">_collections_abc</a>
  &#8226;   <a href="#_weakrefset">_weakrefset</a>
  &#8226;   <a href="#abc">abc</a>
+ &#8226;   <a href="#clr">clr</a>
+ &#8226;   <a href="#clr_loader">clr_loader</a>
+ &#8226;   <a href="#clr_loader.ffi">clr_loader.ffi</a>
+ &#8226;   <a href="#clr_loader.ffi.hostfxr">clr_loader.ffi.hostfxr</a>
+ &#8226;   <a href="#clr_loader.ffi.mono">clr_loader.ffi.mono</a>
+ &#8226;   <a href="#clr_loader.ffi.netfx">clr_loader.ffi.netfx</a>
+ &#8226;   <a href="#clr_loader.hostfxr">clr_loader.hostfxr</a>
+ &#8226;   <a href="#clr_loader.mono">clr_loader.mono</a>
+ &#8226;   <a href="#clr_loader.netfx">clr_loader.netfx</a>
+ &#8226;   <a href="#clr_loader.types">clr_loader.types</a>
+ &#8226;   <a href="#clr_loader.util">clr_loader.util</a>
+ &#8226;   <a href="#clr_loader.util.clr_error">clr_loader.util.clr_error</a>
+ &#8226;   <a href="#clr_loader.util.coreclr_errors">clr_loader.util.coreclr_errors</a>
+ &#8226;   <a href="#clr_loader.util.find">clr_loader.util.find</a>
+ &#8226;   <a href="#clr_loader.util.hostfxr_errors">clr_loader.util.hostfxr_errors</a>
+ &#8226;   <a href="#clr_loader.util.runtime_spec">clr_loader.util.runtime_spec</a>
  &#8226;   <a href="#codecs">codecs</a>
  &#8226;   <a href="#collections">collections</a>
  &#8226;   <a href="#collections.abc">collections.abc</a>
  &#8226;   <a href="#comtypes">comtypes</a>
+ &#8226;   <a href="#comtypes.client">comtypes.client</a>
  &#8226;   <a href="#copyreg">copyreg</a>
  &#8226;   <a href="#datetime">datetime</a>
  &#8226;   <a href="#encodings">encodings</a>
@@ -154,19 +171,20 @@ imports:
  &#8226;   <a href="#genericpath">genericpath</a>
  &#8226;   <a href="#hashlib">hashlib</a>
  &#8226;   <a href="#heapq">heapq</a>
+ &#8226;   <a href="#importlib">importlib</a>
  &#8226;   <a href="#io">io</a>
  &#8226;   <a href="#json">json</a>
  &#8226;   <a href="#keyword">keyword</a>
  &#8226;   <a href="#linecache">linecache</a>
  &#8226;   <a href="#locale">locale</a>
  &#8226;   <a href="#logging">logging</a>
- &#8226;   <a href="#math">math</a>
  &#8226;   <a href="#ntpath">ntpath</a>
  &#8226;   <a href="#operator">operator</a>
  &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#pathlib">pathlib</a>
  &#8226;   <a href="#platform">platform</a>
  &#8226;   <a href="#posixpath">posixpath</a>
+ &#8226;   <a href="#pycaw">pycaw</a>
  &#8226;   <a href="#pycaw.pycaw">pycaw.pycaw</a>
  &#8226;   <a href="#pygame">pygame</a>
  &#8226;   <a href="#pyi_rth_cryptography_openssl.py">pyi_rth_cryptography_openssl.py</a>
@@ -174,6 +192,7 @@ imports:
  &#8226;   <a href="#pyi_rth_multiprocessing.py">pyi_rth_multiprocessing.py</a>
  &#8226;   <a href="#pyi_rth_pkgutil.py">pyi_rth_pkgutil.py</a>
  &#8226;   <a href="#pyi_rth_setuptools.py">pyi_rth_setuptools.py</a>
+ &#8226;   <a href="#pythonnet">pythonnet</a>
  &#8226;   <a href="#queue">queue</a>
  &#8226;   <a href="#re">re</a>
  &#8226;   <a href="#re._casefix">re._casefix</a>
@@ -5679,7 +5698,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#webview.platforms.edgechromium">webview.platforms.edgechromium</a>
+    <a href="#player.py">player.py</a>
+ &#8226;   <a href="#webview.platforms.edgechromium">webview.platforms.edgechromium</a>
  &#8226;   <a href="#webview.platforms.mshtml">webview.platforms.mshtml</a>
  &#8226;   <a href="#webview.platforms.winforms">webview.platforms.winforms</a>
 
@@ -5712,6 +5732,7 @@ imported by:
  &#8226;   <a href="#clr_loader.netfx">clr_loader.netfx</a>
  &#8226;   <a href="#clr_loader.types">clr_loader.types</a>
  &#8226;   <a href="#clr_loader.util">clr_loader.util</a>
+ &#8226;   <a href="#player.py">player.py</a>
  &#8226;   <a href="#pythonnet">pythonnet</a>
 
   </div>
@@ -5744,6 +5765,7 @@ imported by:
  &#8226;   <a href="#clr_loader.mono">clr_loader.mono</a>
  &#8226;   <a href="#clr_loader.netfx">clr_loader.netfx</a>
  &#8226;   <a href="#clr_loader.types">clr_loader.types</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -5761,6 +5783,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#clr_loader.ffi">clr_loader.ffi</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -5777,6 +5800,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#clr_loader.ffi">clr_loader.ffi</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -5793,6 +5817,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#clr_loader.ffi">clr_loader.ffi</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -5815,6 +5840,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#clr_loader">clr_loader</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -5839,6 +5865,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#clr_loader">clr_loader</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -5860,6 +5887,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#clr_loader">clr_loader</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -5885,6 +5913,7 @@ imported by:
  &#8226;   <a href="#clr_loader.mono">clr_loader.mono</a>
  &#8226;   <a href="#clr_loader.netfx">clr_loader.netfx</a>
  &#8226;   <a href="#clr_loader.util">clr_loader.util</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -5915,6 +5944,7 @@ imported by:
  &#8226;   <a href="#clr_loader.util.find">clr_loader.util.find</a>
  &#8226;   <a href="#clr_loader.util.hostfxr_errors">clr_loader.util.hostfxr_errors</a>
  &#8226;   <a href="#clr_loader.util.runtime_spec">clr_loader.util.runtime_spec</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -5934,6 +5964,7 @@ imported by:
     <a href="#clr_loader.util">clr_loader.util</a>
  &#8226;   <a href="#clr_loader.util.coreclr_errors">clr_loader.util.coreclr_errors</a>
  &#8226;   <a href="#clr_loader.util.hostfxr_errors">clr_loader.util.hostfxr_errors</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -5955,6 +5986,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#clr_loader.util">clr_loader.util</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -5982,6 +6014,7 @@ imports:
 imported by:
     <a href="#clr_loader">clr_loader</a>
  &#8226;   <a href="#clr_loader.util">clr_loader.util</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -6000,6 +6033,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#clr_loader.util">clr_loader.util</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -6021,6 +6055,7 @@ imports:
 imported by:
     <a href="#clr_loader">clr_loader</a>
  &#8226;   <a href="#clr_loader.util.find">clr_loader.util.find</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -7086,6 +7121,7 @@ imported by:
  &#8226;   <a href="#comtypes.client.dynamic">comtypes.client.dynamic</a>
  &#8226;   <a href="#comtypes.client.lazybind">comtypes.client.lazybind</a>
  &#8226;   <a href="#comtypes.server">comtypes.server</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 
@@ -15023,6 +15059,7 @@ imported by:
  &#8226;   <a href="#importlib.util">importlib.util</a>
  &#8226;   <a href="#inspect">inspect</a>
  &#8226;   <a href="#pkgutil">pkgutil</a>
+ &#8226;   <a href="#player.py">player.py</a>
  &#8226;   <a href="#requests.compat">requests.compat</a>
  &#8226;   <a href="#setuptools._distutils">setuptools._distutils</a>
  &#8226;   <a href="#setuptools._vendor.importlib_metadata">setuptools._vendor.importlib_metadata</a>
@@ -16595,7 +16632,6 @@ imported by:
  &#8226;   <a href="#numpy.lib">numpy.lib</a>
  &#8226;   <a href="#numpy.lib._index_tricks_impl">numpy.lib._index_tricks_impl</a>
  &#8226;   <a href="#pefile">pefile</a>
- &#8226;   <a href="#player.py">player.py</a>
  &#8226;   <a href="#random">random</a>
  &#8226;   <a href="#selectors">selectors</a>
  &#8226;   <a href="#setuptools._vendor.more_itertools.more">setuptools._vendor.more_itertools.more</a>
@@ -25782,7 +25818,8 @@ imported by:
   <a target="code" href="///C:/Users/micae/AppData/Local/Programs/Python/Python312/Lib/site-packages/pycaw/__init__.py" type="text/plain"><tt>pycaw</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
 imported by:
-    <a href="#pycaw.api">pycaw.api</a>
+    <a href="#player.py">player.py</a>
+ &#8226;   <a href="#pycaw.api">pycaw.api</a>
  &#8226;   <a href="#pycaw.constants">pycaw.constants</a>
  &#8226;   <a href="#pycaw.pycaw">pycaw.pycaw</a>
  &#8226;   <a href="#pycaw.utils">pycaw.utils</a>
@@ -27179,6 +27216,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#clr">clr</a>
+ &#8226;   <a href="#player.py">player.py</a>
 
   </div>
 

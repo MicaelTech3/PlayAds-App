@@ -63,7 +63,6 @@ FIREBASE_DB_URL      = "https://anucio-web-default-rtdb.firebaseio.com"
 FIREBASE_AUTH_URL    = "https://identitytoolkit.googleapis.com/v1/accounts"
 FIREBASE_REFRESH_URL = "https://securetoken.googleapis.com/v1/token"
 WEB_URL              = "https://playads-app.web.app"
-#http://localhost:5173/---------
 
 DEFAULT_CONFIG = {
     "player_nome":    "Player Principal",
@@ -836,17 +835,64 @@ def disable_startup():
         return False, f"Erro ao remover: {ex}"
 
 # ─── Restart ─────────────────────────────────────────────────────────────────
+def _get_relaunch_cmd():
+    if getattr(sys, "frozen", False):
+        return [sys.executable]
+    else:
+        py = Path(sys.executable)
+        pythonw = py.parent / "pythonw.exe"
+        exe = str(pythonw) if pythonw.exists() else str(py)
+        return [exe, str(BASE_DIR / "player.py")]
+
+
 def restart_app():
-    """Fecha a janela pywebview e relança o processo."""
-    exe  = sys.executable
-    args = sys.argv[:]
+    """
+    Reinicia via VBScript simples:
+    aguarda 3s (tempo suficiente para o processo morrer) e relança.
+    Sem WMI — mais compatível e sem falhas silenciosas.
+    """
+    cmd        = _get_relaunch_cmd()
+    # Cada parte entre aspas duplas escapadas para VBS (""valor"")
+    cmd_vbs    = " ".join(f'""{ c }""' for c in cmd)
+
+    vbs_path = BASE_DIR / "_playads_restart.vbs"
+    vbs_lines = [
+        'Set oShell = CreateObject("WScript.Shell")',
+        'WScript.Sleep 3000',
+        f'oShell.Run "{cmd_vbs}", 1, False',
+        'Set fso = CreateObject("Scripting.FileSystemObject")',
+        'fso.DeleteFile WScript.ScriptFullName',
+    ]
+    vbs_content = "\r\n".join(vbs_lines) + "\r\n"
+
     def _go():
-        time.sleep(0.5)
-        subprocess.Popen([exe] + args[1:])
-        os._exit(0)
-    threading.Thread(target=_go, daemon=True).start()
+        time.sleep(0.1)
+        try:
+            vbs_path.write_text(vbs_content, encoding="utf-8")
+            log.info(f"VBS escrito em: {vbs_path}")
+            for i, ln in enumerate(vbs_lines, 1):
+                log.info(f"  VBS L{i}: {ln}")
+            CREATE_NO_WINDOW = 0x08000000
+            subprocess.Popen(
+                ["wscript.exe", "/nologo", str(vbs_path)],
+                creationflags=(subprocess.DETACHED_PROCESS
+                               | subprocess.CREATE_NEW_PROCESS_GROUP
+                               | CREATE_NO_WINDOW),
+                close_fds=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+            )
+        except Exception as ex:
+            log.error(f"restart vbs erro: {ex}")
+        finally:
+            os._exit(0)
+
     try: webview.windows[0].destroy()
-    except: pass
+    except Exception: pass
+
+    threading.Thread(target=_go, daemon=True).start()
+
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  BRIDGE
@@ -933,8 +979,12 @@ class Bridge:
 
     def cmd_restart(self):
         """Reinicia o aplicativo — chamado após ativação bem-sucedida."""
+        # Lança restart em thread e NÃO retorna nada ao JS
+        # (a janela será destruída antes de qualquer resposta)
         threading.Thread(target=restart_app, daemon=True).start()
-        return True
+        # Pequena pausa para a thread iniciar antes do processo morrer
+        time.sleep(0.1)
+        # Não retorna — evita ObjectDisposedException no pywebview
 
     def open_web(self):
         import webbrowser; webbrowser.open(WEB_URL); return True
@@ -991,6 +1041,36 @@ class Bridge:
 
     def disconnect_platform(self, platform_id):
         return {"ok": True}
+
+    # ── Dependências ───────────────────────────────────────────────
+    def get_deps_status(self):
+        import importlib
+        checks = [
+            ("pywebview", "webview"), ("pygame",    "pygame"),
+            ("requests",  "requests"),("pythonnet", "clr"),
+            ("pycaw",     "pycaw"),   ("yt_dlp",    "yt_dlp"),
+        ]
+        result = {}
+        for key, mod in checks:
+            try:   importlib.import_module(mod); result[key] = True
+            except ImportError: result[key] = False
+        return result
+
+    def install_dep(self, pip_name):
+        try:
+            log.info(f"Instalando: {pip_name}")
+            proc = subprocess.run(
+                [sys.executable, "-m", "pip", "install", pip_name, "--upgrade", "-q"],
+                capture_output=True, text=True, timeout=180)
+            if proc.returncode == 0:
+                log.info(f"✓ {pip_name} instalado")
+                return {"ok": True}
+            err = (proc.stderr or proc.stdout or "erro")[-200:]
+            return {"ok": False, "error": err}
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "error": "Timeout"}
+        except Exception as ex:
+            return {"ok": False, "error": str(ex)}
 
 
 # ─── Backend startup ──────────────────────────────────────────────────────────
