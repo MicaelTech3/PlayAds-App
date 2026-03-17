@@ -64,7 +64,3 @@ playads-ui/
 │       └── pages.jsx   (Logs, Config, Account)
 └── dist/                  # Gerado pelo: npm run build
 ```
-
-
-
-  

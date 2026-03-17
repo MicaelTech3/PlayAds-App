@@ -194,15 +194,56 @@ def get_cached(url):
     if e and Path(e["path"]).exists(): return e["path"]
     return None
 
-def set_cached(url, path, nome="", tipo=""):
+def set_cached(url, path, nome="", tipo="", horarios=None, dias=None):
     idx = load_cache_index()
     idx[url_key(url)] = {
-        "path": str(path), "nome": nome, "tipo": tipo, "ts": int(time.time()),
-        "tamanho": Path(path).stat().st_size if Path(path).exists() else 0
+        "path":     str(path),
+        "nome":     nome,
+        "tipo":     tipo,
+        "ts":       int(time.time()),
+        "tamanho":  Path(path).stat().st_size if Path(path).exists() else 0,
+        "horarios": horarios or [],
+        "dias":     dias or ["dom","seg","ter","qua","qui","sex","sab"],
+        "url":      url,
     }
     save_cache_index(idx)
 
+
+def update_cached_schedules(url, horarios, dias):
+    """Atualiza só os horários/dias de uma entrada já cacheada, sem re-baixar."""
+    idx = load_cache_index()
+    k = url_key(url)
+    if k in idx:
+        idx[k]["horarios"] = horarios or []
+        idx[k]["dias"]     = dias or ["dom","seg","ter","qua","qui","sex","sab"]
+        idx[k]["url"]      = url
+        save_cache_index(idx)
+        return True
+    return False
+
+
+def sync_schedules_to_cache():
+    """
+    Percorre todas as playlists do Firebase e atualiza os horários/dias
+    de cada arquivo local cacheado.
+    Garante que local e Firebase estejam sempre alinhados.
+    """
+    updated = 0
+    for pl in ST.local_playlists.values():
+        if not isinstance(pl, dict): continue
+        for item in (pl.get("itens") or []):
+            url      = item.get("url", "")
+            if not url: continue
+            horarios = get_item_horarios(item)
+            dias     = item.get("dias") or ["dom","seg","ter","qua","qui","sex","sab"]
+            if update_cached_schedules(url, horarios, dias):
+                updated += 1
+    if updated:
+        log.info(f"🗓️  Horários sincronizados para {updated} arquivo(s) local(is)")
+        ev("local_updated")
+
 def scan_local_files():
+    """Lê pasta local/ e retorna arquivos com metadados + horários do cache."""
     idx = load_cache_index(); files = []
     for entry in sorted(LOCAL_DIR.iterdir(), key=lambda f: f.stat().st_mtime if f.is_file() else 0, reverse=True):
         if not entry.is_file() or entry.name.startswith("."): continue
@@ -210,11 +251,14 @@ def scan_local_files():
         meta = next((v for v in idx.values() if Path(v["path"]) == entry), None)
         files.append({
             "path":    str(entry),
-            "nome":    meta["nome"] if meta else entry.stem,
+            "nome":    meta["nome"]    if meta else entry.stem,
             "tipo":    meta.get("tipo", entry.suffix.lstrip(".").upper()) if meta else entry.suffix.lstrip(".").upper(),
-            "ts":      meta["ts"]   if meta else int(entry.stat().st_mtime),
+            "ts":      meta["ts"]      if meta else int(entry.stat().st_mtime),
             "tamanho": entry.stat().st_size,
-            "url":     "",
+            "url":     meta.get("url", "") if meta else "",
+            # Horários e dias sincronizados do Firebase
+            "horarios": meta.get("horarios", []) if meta else [],
+            "dias":     meta.get("dias", [])     if meta else [],
         })
     return files
 
@@ -516,8 +560,9 @@ def sync_from_firebase():
             LOCAL_PL_FILE.write_text(json.dumps(filtered, ensure_ascii=False, indent=2), encoding="utf-8")
             ev("fb_data", playlists=filtered, anuncios=ST.local_anuncios)
             log.info(f"🔄 Playlists sincronizadas: {len(filtered)}")
-            # Baixa mídias novas em background
+            # Baixa mídias novas + sincroniza horários no cache local
             threading.Thread(target=precache_new, args=(filtered,), daemon=True).start()
+            threading.Thread(target=sync_schedules_to_cache, daemon=True).start()
 
         ads = fb_get("/anuncios")
         if ads and isinstance(ads, dict):
@@ -578,8 +623,9 @@ def setup_listeners(cfg):
             ev("fb_data", playlists=filtered, anuncios=ST.local_anuncios)
             LOCAL_PL_FILE.write_text(json.dumps(filtered, ensure_ascii=False, indent=2), encoding="utf-8")
             log.info(f"🔄 SSE playlists: {len(filtered)} playlist(s)")
-            # Baixa automaticamente mídias novas em background
+            # Baixa mídias novas + sincroniza horários no cache local
             threading.Thread(target=precache_new, args=(filtered,), daemon=True).start()
+            threading.Thread(target=sync_schedules_to_cache, daemon=True).start()
         except Exception as ex: log.error(f"on_playlists: {ex}")
 
     def on_anuncios(data):
@@ -621,6 +667,7 @@ _DIAS_MAP = {0: "seg", 1: "ter", 2: "qua", 3: "qui", 4: "sex", 5: "sab", 6: "dom
 def check_schedules(cfg):
     """
     Verifica agendamentos a cada 20s.
+    Prioridade: arquivo local cacheado > URL remota.
     Respeita horarios (array), horario (string legada) e dias da semana.
     """
     fired: set = set()
@@ -633,12 +680,11 @@ def check_schedules(cfg):
             now       = datetime.now()
             now_t     = now.strftime("%H:%M")
             today_str = now.strftime("%Y-%m-%d")
-            today_dia = _DIAS_MAP[now.weekday()]  # seg, ter, qua...
+            today_dia = _DIAS_MAP[now.weekday()]
 
-            # Limpa fired de dias anteriores
             fired = {k for k in fired if k.startswith(today_str)}
 
-            # Percorre todas as playlists ativas
+            # ── Fonte 1: playlists do Firebase (com horários) ──────────────
             for pl_id, pl in list(ST.local_playlists.items()):
                 if ST.playing: break
                 if not isinstance(pl, dict): continue
@@ -648,29 +694,82 @@ def check_schedules(cfg):
                     if ST.playing: break
                     if not isinstance(item, dict): continue
 
-                    # Verifica horários
                     horarios_item = get_item_horarios(item)
                     if not horarios_item: continue
                     if now_t not in horarios_item: continue
 
-                    # Verifica dias da semana
                     dias_item = item.get("dias")
                     if isinstance(dias_item, list) and len(dias_item) > 0:
                         if today_dia not in dias_item:
-                            continue  # hoje não é dia de tocar
+                            continue
 
                     fk = f"{today_str} {now_t} {pl_id} {idx}"
                     if fk in fired: continue
 
-                    log.info(f"⏰ {now_t} ({today_dia}): [{pl.get('nome')}] → {item.get('nome','?')}")
-                    fired.add(fk)
+                    # Prefere arquivo local se disponível
+                    url        = item.get("url", "")
+                    local_path = get_cached(url) if url else None
+                    item_play  = dict(item)
+                    if local_path:
+                        item_play["path"] = local_path
+                        log.info(f"⏰ {now_t} ({today_dia}): [LOCAL] {item.get('nome','?')}")
+                    else:
+                        log.info(f"⏰ {now_t} ({today_dia}): [STREAM] {item.get('nome','?')}")
 
-                    sub = {
-                        "nome":  f"{pl.get('nome','?')} @ {now_t}",
-                        "itens": [item],
-                    }
+                    fired.add(fk)
+                    sub = {"nome": f"{pl.get('nome','?')} @ {now_t}", "itens": [item_play]}
                     start_playlist(sub, cfg, force=True)
                     break
+
+            if ST.playing: continue
+
+            # ── Fonte 2: arquivos locais com horários no cache index ────────
+            # Toca mídias que estão salvas localmente mas não têm playlist ativa
+            idx_data = load_cache_index()
+            for k, meta in list(idx_data.items()):
+                if ST.playing: break
+                path     = meta.get("path", "")
+                horarios = meta.get("horarios") or []
+                dias     = meta.get("dias") or []
+                nome     = meta.get("nome", Path(path).stem if path else "?")
+
+                if not path or not Path(path).exists(): continue
+                if not horarios: continue
+                if now_t not in horarios: continue
+                if dias and today_dia not in dias: continue
+
+                # Verifica se já foi disparado por uma playlist (evita duplo disparo)
+                fk = f"{today_str} {now_t} local_{k}"
+                if fk in fired: continue
+
+                # Verifica se alguma playlist ativa já cobre essa URL
+                url = meta.get("url", "")
+                ja_coberto = False
+                if url:
+                    for pl in ST.local_playlists.values():
+                        if not isinstance(pl, dict) or not pl.get("ativa"): continue
+                        for it in (pl.get("itens") or []):
+                            if it.get("url") == url and get_item_horarios(it):
+                                ja_coberto = True
+                                break
+                        if ja_coberto: break
+
+                if ja_coberto: continue  # playlist já cuida disso
+
+                log.info(f"⏰ {now_t} ({today_dia}): [CACHE] {nome}")
+                fired.add(fk)
+                item_local = {
+                    "nome":    nome,
+                    "url":     url,
+                    "path":    path,
+                    "loops":   meta.get("loops", 1),
+                    "tipo":    meta.get("tipo", ""),
+                    "horarios": horarios,
+                    "dias":     dias,
+                }
+                sub = {"nome": f"Cache @ {now_t}", "itens": [item_local]}
+                start_playlist(sub, cfg, force=True)
+                break
 
         except Exception as ex:
             log.error(f"schedule: {ex}")
@@ -709,24 +808,46 @@ def precache_all(silent=False):
 
 
 def precache_new(playlists_dict):
-    """Verifica se chegaram mídias novas e baixa em background."""
-    urls_novas = []
+    """
+    Verifica mídias novas e baixa em background.
+    Também atualiza horários/dias de arquivos já cacheados.
+    """
+    # Coleta todas as mídias com seus metadados
+    items_map = {}  # url → item com horarios/dias mais recentes
     for pl in playlists_dict.values():
         if not isinstance(pl, dict): continue
         for item in (pl.get("itens") or []):
             url = item.get("url", "")
-            if url and not get_cached(url):
-                urls_novas.append((url, item.get("nome", "?")))
+            if not url: continue
+            items_map[url] = item  # última definição vence
 
-    if not urls_novas: return
+    if not items_map: return
 
-    log.info(f"🔽 {len(urls_novas)} mídia(s) nova(s) para baixar...")
-    for url, nome in urls_novas:
-        if get_cached(url): continue   # pode ter sido baixado em paralelo
+    novas = [(url, item) for url, item in items_map.items() if not get_cached(url)]
+    existentes = [(url, item) for url, item in items_map.items() if get_cached(url)]
+
+    # Atualiza horários de arquivos já cacheados
+    for url, item in existentes:
+        horarios = get_item_horarios(item)
+        dias     = item.get("dias") or ["dom","seg","ter","qua","qui","sex","sab"]
+        update_cached_schedules(url, horarios, dias)
+
+    if not novas: return
+
+    log.info(f"🔽 {len(novas)} mídia(s) nova(s) para baixar...")
+    for url, item in novas:
+        if get_cached(url): continue
+        nome     = item.get("nome", "?")
+        horarios = get_item_horarios(item)
+        dias     = item.get("dias") or ["dom","seg","ter","qua","qui","sex","sab"]
         log.info(f"🔽 Baixando: {nome}")
         result = get_audio(url, nome)
-        if result: ev("local_updated")
-        else: log.warning(f"⚠️  Falha ao baixar: {nome}")
+        if result:
+            # Salva horários junto com o cache
+            update_cached_schedules(url, horarios, dias)
+            ev("local_updated")
+        else:
+            log.warning(f"⚠️  Falha ao baixar: {nome}")
     ev("cache_done"); ev("local_updated")
 
 def load_local_data():

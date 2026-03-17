@@ -1,23 +1,22 @@
 {
-  "6b7681d0e34c3463fff11ac226d6c8bd": {
-    "path": "c:\\Users\\micae\\Documents\\playads-v7\\playads-zip\\local\\6b7681d0e34c3463fff11ac226d6c8bd.wav",
-    "nome": "5 andar sem filas",
+  "4da521aeff3cd33cfeeaaf524a35d307": {
+    "path": "c:\\Users\\micae\\Documents\\playads-v7\\playads-zip\\local\\4da521aeff3cd33cfeeaaf524a35d307.wav",
+    "nome": "1 andar sem filas",
     "tipo": "WAV",
-    "ts": 1773605968,
-    "tamanho": 852046
-  },
-  "dcc830c0da67db4e610a5f3e131169dd": {
-    "path": "c:\\Users\\micae\\Documents\\playads-v7\\playads-zip\\local\\dcc830c0da67db4e610a5f3e131169dd.wav",
-    "nome": "4 andar sem filas",
-    "tipo": "WAV",
-    "ts": 1773606705,
-    "tamanho": 860238
-  },
-  "7efef98bda294829a138bf94487fc6f3": {
-    "path": "c:\\Users\\micae\\Documents\\playads-v7\\playads-zip\\local\\7efef98bda294829a138bf94487fc6f3.wav",
-    "nome": "4 andar sem filas",
-    "tipo": "WAV",
-    "ts": 1773666257,
-    "tamanho": 860238
+    "ts": 1773769321,
+    "tamanho": 909390,
+    "horarios": [
+      "14:42"
+    ],
+    "dias": [
+      "dom",
+      "seg",
+      "ter",
+      "qua",
+      "qui",
+      "sex",
+      "sab"
+    ],
+    "url": "https://firebasestorage.googleapis.com/v0/b/anucio-web.firebasestorage.app/o/users%2Fadm%40gmail%2Ccom%2Faudios%2F1773769219727_1_andar_sem_filas.wav?alt=media&token=678704e2-6266-435c-8bcd-be4104631fc0"
   }
 }

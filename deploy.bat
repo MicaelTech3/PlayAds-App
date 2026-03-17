@@ -65,7 +65,7 @@ echo   DEPLOY CONCLUIDO!
 echo ==========================================
 echo.
 echo   Site publicado em:
-echo https://playads-app.web.app/
+echo   https://anucio-web.web.app
 echo.
 echo   O PlayAds.exe ja vai carregar a nova versao
 echo   automaticamente na proxima abertura.

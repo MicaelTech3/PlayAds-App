@@ -103,6 +103,8 @@ export default function App() {
           return { ...prev, connStatus: "Conectado" };
         case "firebase_err":
           return { ...prev, connStatus: "Erro Firebase", status: "error" };
+        case "sync_done":
+          return { ...prev, connStatus: prev.status === "playing" ? "Reproduzindo" : "Pronto" };
         case "init_info":
           return {
             ...prev,
