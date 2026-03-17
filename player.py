@@ -62,7 +62,7 @@ FIREBASE_WEB_API_KEY = "AIzaSyBgwB_2syWdyK5Wc0E9rJIlDnXjwTf1OWE"
 FIREBASE_DB_URL      = "https://anucio-web-default-rtdb.firebaseio.com"
 FIREBASE_AUTH_URL    = "https://identitytoolkit.googleapis.com/v1/accounts"
 FIREBASE_REFRESH_URL = "https://securetoken.googleapis.com/v1/token"
-WEB_URL              = "http://localhost:5173/"
+WEB_URL              = "https://playads-app.web.app"
 #http://localhost:5173/---------
 
 DEFAULT_CONFIG = {

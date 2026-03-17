@@ -118,5 +118,23 @@
     "player_id": "PLAY-5XZK-AGA4",
     "status": "ok",
     "timestamp": 1773774282603
+  },
+  "-OnxBtZNRwlgTo_VfV39": {
+    "mensagem": "Iniciando: main @ 16:09",
+    "player_id": "PLAY-5XZK-AGA4",
+    "status": "ok",
+    "timestamp": 1773774542672
+  },
+  "-OnxBu8tNL3uacMgQVuB": {
+    "mensagem": "▶ 1 andar sem filas (loop 1/1)",
+    "player_id": "PLAY-5XZK-AGA4",
+    "status": "ok",
+    "timestamp": 1773774545065
+  },
+  "-OnxBxKC3DS68fDppiPm": {
+    "mensagem": "'main @ 16:09' concluída",
+    "player_id": "PLAY-5XZK-AGA4",
+    "status": "ok",
+    "timestamp": 1773774557993
   }
 }
