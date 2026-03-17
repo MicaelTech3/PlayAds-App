@@ -1,10 +1,10 @@
 import { useState, useRef } from "react"
 
 export default function ActivationScreen({ onActivated }) {
-  const [codigo, setCodigo] = useState("")
-  const [email,  setEmail]  = useState("")
-  const [senha,  setSenha]  = useState("")
-  const [status, setStatus] = useState({ msg: "", type: "" })
+  const [codigo,  setCodigo]  = useState("")
+  const [email,   setEmail]   = useState("")
+  const [senha,   setSenha]   = useState("")
+  const [status,  setStatus]  = useState({ msg: "", type: "" })
   const [loading, setLoading] = useState(false)
   const emailRef = useRef(null)
   const senhaRef = useRef(null)
@@ -14,20 +14,26 @@ export default function ActivationScreen({ onActivated }) {
     let out = "PLAY"
     if (raw.startsWith("PLAY")) {
       const rest = raw.slice(4).slice(0, 8)
-      if (rest.length > 4) out += `-${rest.slice(0, 4)}-${rest.slice(4)}`
+      if (rest.length > 4)      out += `-${rest.slice(0, 4)}-${rest.slice(4)}`
       else if (rest.length > 0) out += `-${rest}`
     } else {
       const rest = raw.slice(0, 8)
-      if (rest.length > 4) out += `-${rest.slice(0, 4)}-${rest.slice(4)}`
+      if (rest.length > 4)      out += `-${rest.slice(0, 4)}-${rest.slice(4)}`
       else if (rest.length > 0) out += `-${rest}`
     }
     return out
   }
 
   const handleActivate = async () => {
-    if (codigo.length < 12) { setStatus({ msg: "Digite o código completo (PLAY-XXXX-XXXX)", type: "warn" }); return }
-    if (!email.includes("@")) { setStatus({ msg: "E-mail inválido", type: "warn" }); return }
-    if (senha.length < 6)    { setStatus({ msg: "Senha mínima de 6 caracteres", type: "warn" }); return }
+    if (codigo.length < 12) {
+      setStatus({ msg: "Digite o código completo (PLAY-XXXX-XXXX)", type: "warn" }); return
+    }
+    if (!email.includes("@")) {
+      setStatus({ msg: "E-mail inválido", type: "warn" }); return
+    }
+    if (senha.length < 6) {
+      setStatus({ msg: "Senha mínima de 6 caracteres", type: "warn" }); return
+    }
 
     setLoading(true)
     setStatus({ msg: "Verificando no servidor...", type: "info" })
@@ -36,15 +42,23 @@ export default function ActivationScreen({ onActivated }) {
       if (window.pywebview?.api) {
         const res = await window.pywebview.api.activate(codigo, email, senha)
         if (res?.ok) {
-          setStatus({ msg: `✓ Ativado! Conta: ${res.email}`, type: "ok" })
-          setTimeout(() => onActivated(), 1200)
+          setStatus({ msg: "✓ Ativado com sucesso! Reiniciando o player...", type: "ok" })
+          // Aguarda 1.5s para o usuário ver a mensagem, depois reinicia o processo
+          setTimeout(async () => {
+            try {
+              await window.pywebview.api.cmd_restart()
+            } catch (_) {
+              // Fallback: se restart falhar por algum motivo, carrega normalmente
+              onActivated()
+            }
+          }, 1500)
         } else {
           setStatus({ msg: res?.error || "Credenciais inválidas.", type: "err" })
           setLoading(false)
         }
       } else {
-        // Dev mock
-        setStatus({ msg: "✓ Dev mode — ativado", type: "ok" })
+        // Dev mock (sem pywebview)
+        setStatus({ msg: "✓ Dev mode — ativado!", type: "ok" })
         setTimeout(() => onActivated(), 800)
       }
     } catch (e) {
@@ -54,7 +68,10 @@ export default function ActivationScreen({ onActivated }) {
   }
 
   const statusColor = {
-    ok: "var(--green)", err: "var(--danger)", warn: "var(--warn)", info: "var(--muted2)",
+    ok:   "var(--green)",
+    err:  "var(--danger)",
+    warn: "var(--warn)",
+    info: "var(--muted2)",
   }[status.type] || "transparent"
 
   return (

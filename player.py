@@ -4,7 +4,7 @@ PlayAds Player v7.0  —  Backend Python
 Interface: React/JSX via pywebview
 """
 
-import os, sys, json, time, threading, platform, logging, queue, hashlib, math
+import os, sys, json, time, threading, platform, logging, queue, hashlib, subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -62,7 +62,8 @@ FIREBASE_WEB_API_KEY = "AIzaSyBgwB_2syWdyK5Wc0E9rJIlDnXjwTf1OWE"
 FIREBASE_DB_URL      = "https://anucio-web-default-rtdb.firebaseio.com"
 FIREBASE_AUTH_URL    = "https://identitytoolkit.googleapis.com/v1/accounts"
 FIREBASE_REFRESH_URL = "https://securetoken.googleapis.com/v1/token"
-WEB_URL              = "https://playads-app.web.app"
+WEB_URL              = "http://localhost:5173/"
+#http://localhost:5173/---------
 
 DEFAULT_CONFIG = {
     "player_nome":    "Player Principal",
@@ -177,7 +178,7 @@ def validate_and_login(codigo, email, senha):
     if not auth_sign_in(email, senha): return None, None, "E-mail ou senha incorretos."
     return uid, email, None
 
-# ─── Cache / Local ─────────────────────────────────────────────────────────
+# ─── Cache / Local ────────────────────────────────────────────────────────────
 def load_cache_index():
     if CACHE_INDEX.exists():
         try: return json.loads(CACHE_INDEX.read_text(encoding="utf-8"))
@@ -208,9 +209,7 @@ def set_cached(url, path, nome="", tipo="", horarios=None, dias=None):
     }
     save_cache_index(idx)
 
-
 def update_cached_schedules(url, horarios, dias):
-    """Atualiza só os horários/dias de uma entrada já cacheada, sem re-baixar."""
     idx = load_cache_index()
     k = url_key(url)
     if k in idx:
@@ -221,18 +220,12 @@ def update_cached_schedules(url, horarios, dias):
         return True
     return False
 
-
 def sync_schedules_to_cache():
-    """
-    Percorre todas as playlists do Firebase e atualiza os horários/dias
-    de cada arquivo local cacheado.
-    Garante que local e Firebase estejam sempre alinhados.
-    """
     updated = 0
     for pl in ST.local_playlists.values():
         if not isinstance(pl, dict): continue
         for item in (pl.get("itens") or []):
-            url      = item.get("url", "")
+            url = item.get("url", "")
             if not url: continue
             horarios = get_item_horarios(item)
             dias     = item.get("dias") or ["dom","seg","ter","qua","qui","sex","sab"]
@@ -243,20 +236,19 @@ def sync_schedules_to_cache():
         ev("local_updated")
 
 def scan_local_files():
-    """Lê pasta local/ e retorna arquivos com metadados + horários do cache."""
     idx = load_cache_index(); files = []
-    for entry in sorted(LOCAL_DIR.iterdir(), key=lambda f: f.stat().st_mtime if f.is_file() else 0, reverse=True):
+    for entry in sorted(LOCAL_DIR.iterdir(),
+                        key=lambda f: f.stat().st_mtime if f.is_file() else 0, reverse=True):
         if not entry.is_file() or entry.name.startswith("."): continue
         if entry.suffix.lower() not in (".mp3", ".wav", ".ogg", ".m4a"): continue
         meta = next((v for v in idx.values() if Path(v["path"]) == entry), None)
         files.append({
-            "path":    str(entry),
-            "nome":    meta["nome"]    if meta else entry.stem,
-            "tipo":    meta.get("tipo", entry.suffix.lstrip(".").upper()) if meta else entry.suffix.lstrip(".").upper(),
-            "ts":      meta["ts"]      if meta else int(entry.stat().st_mtime),
-            "tamanho": entry.stat().st_size,
-            "url":     meta.get("url", "") if meta else "",
-            # Horários e dias sincronizados do Firebase
+            "path":     str(entry),
+            "nome":     meta["nome"]    if meta else entry.stem,
+            "tipo":     meta.get("tipo", entry.suffix.lstrip(".").upper()) if meta else entry.suffix.lstrip(".").upper(),
+            "ts":       meta["ts"]      if meta else int(entry.stat().st_mtime),
+            "tamanho":  entry.stat().st_size,
+            "url":      meta.get("url", "") if meta else "",
             "horarios": meta.get("horarios", []) if meta else [],
             "dias":     meta.get("dias", [])     if meta else [],
         })
@@ -269,15 +261,9 @@ def get_local_info():
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 def email_to_key(email: str) -> str:
-    """Converte email para chave Firebase-safe (ponto → vírgula)."""
     return email.replace(".", ",")
 
 def get_item_horarios(item):
-    """
-    Retorna lista de horários de um item — suporta ambos os formatos:
-      - horarios: ["HH:MM", "HH:MM"]  (novo painel React)
-      - horario:  "HH:MM"             (formato legado)
-    """
     horarios = []
     if isinstance(item.get("horarios"), list):
         horarios = [h for h in item["horarios"] if h and isinstance(h, str)]
@@ -285,7 +271,7 @@ def get_item_horarios(item):
         horarios.append(item["horario"])
     return horarios
 
-# ─── State ────────────────────────────────────────────────────────────────────
+# ─── State ───────────────────────────────────────────────────────────────────
 class State:
     lock            = threading.Lock()
     playing         = False
@@ -353,7 +339,7 @@ def _duck_worker(target_pct, fade_ms, restore):
         try: comtypes.CoUninitialize()
         except: pass
 
-# ─── Download ─────────────────────────────────────────────────────────────────
+# ─── Download ────────────────────────────────────────────────────────────────
 def is_yt(url): return "youtube.com" in url or "youtu.be" in url
 
 def download_yt(url, nome):
@@ -367,7 +353,8 @@ def download_yt(url, nome):
         with yt_dlp.YoutubeDL({
             "format": "bestaudio/best", "outtmpl": out,
             "quiet": True, "no_warnings": True,
-            "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}]
+            "postprocessors": [{"key": "FFmpegExtractAudio",
+                                "preferredcodec": "mp3", "preferredquality": "192"}]
         }) as ydl:
             ydl.download([url])
         mp3 = str(LOCAL_DIR / f"{fname}.mp3")
@@ -399,7 +386,7 @@ def download_audio(url, nome):
 def get_audio(url, nome):
     return download_yt(url, nome) if is_yt(url) else download_audio(url, nome)
 
-# ─── Firebase REST ────────────────────────────────────────────────────────────
+# ─── Firebase REST ───────────────────────────────────────────────────────────
 def _furl(path):
     key = email_to_key(ST.email) if ST.email else ST.uid
     return f"{FIREBASE_DB_URL}/users/{key}{path}.json?auth={get_token()}"
@@ -440,7 +427,7 @@ def fb_status(rep=None):
 
 def fb_done(path): fb_update(path, {"executado": True})
 
-# ─── Playback ─────────────────────────────────────────────────────────────────
+# ─── Playback ────────────────────────────────────────────────────────────────
 def play_item(item, cfg, loops_override=None):
     nome  = item.get("nome", "?")
     url   = item.get("url", "") or item.get("path", "")
@@ -491,9 +478,7 @@ def run_playlist(pl, cfg, force=False, loops_override=None):
     now_t = datetime.now().strftime("%H:%M"); played_any = False
     for i, item in enumerate(itens):
         if ST.stop_requested: break
-        # Suporta horario (string) e horarios (array)
         horarios_item = get_item_horarios(item)
-        # Se tem horário definido e não é force, só toca se bater com agora
         if horarios_item and not force and now_t not in horarios_item: continue
         ST.current_item = item; played_any = True
         play_item(item, cfg, loops_override=loops_override)
@@ -507,7 +492,9 @@ def stop_all():
     try: pygame.mixer.music.stop()
     except: pass
     if ST.current_thread and ST.current_thread.is_alive(): ST.current_thread.join(timeout=3)
-    with ST.lock: ST.stop_requested = False; ST.playing = False; ST.current_thread = None; ST.current_item = None
+    with ST.lock:
+        ST.stop_requested = False; ST.playing = False
+        ST.current_thread = None; ST.current_item = None
 
 def start_playlist(pl, cfg, force=True, loops_override=None):
     stop_all()
@@ -525,7 +512,8 @@ def _sse_listen(path, callback, label=""):
             tok  = get_token()
             key  = email_to_key(ST.email) if ST.email else ST.uid
             url  = f"{FIREBASE_DB_URL}/users/{key}{path}.json?auth={tok}"
-            resp = requests.get(url, headers={"Accept": "text/event-stream", "Cache-Control": "no-cache"},
+            resp = requests.get(url,
+                                headers={"Accept": "text/event-stream", "Cache-Control": "no-cache"},
                                 stream=True, timeout=60)
             if resp.status_code == 401: auth_refresh(); time.sleep(3); continue
             if resp.status_code != 200: time.sleep(10); continue
@@ -541,57 +529,47 @@ def _sse_listen(path, callback, label=""):
                     elif line == "":
                         if etype in ("put", "patch") and edata:
                             try:
-                                payload = json.loads(edata); raw = payload.get("data"); callback(raw)
+                                payload = json.loads(edata)
+                                raw = payload.get("data")
+                                callback(raw)
                             except Exception as ex: log.warning(f"SSE {label} parse: {ex}")
                         etype = ""; edata = ""
         except requests.exceptions.Timeout: time.sleep(3)
         except Exception as ex: log.warning(f"SSE {label}: {ex} — retry 5s"); time.sleep(5)
 
 def sync_from_firebase():
-    """
-    Busca todos os dados do Firebase e atualiza o estado local.
-    Chamado na inicialização, pelo refresh manual e pelo polling automático.
-    """
     try:
         pls = fb_get("/playlists")
         if pls and isinstance(pls, dict):
-            filtered = {k: v for k, v in pls.items() if isinstance(v, dict) and not v.get("temp")}
+            filtered = {k: v for k, v in pls.items()
+                        if isinstance(v, dict) and not v.get("temp")}
             ST.local_playlists = filtered
             LOCAL_PL_FILE.write_text(json.dumps(filtered, ensure_ascii=False, indent=2), encoding="utf-8")
             ev("fb_data", playlists=filtered, anuncios=ST.local_anuncios)
             log.info(f"🔄 Playlists sincronizadas: {len(filtered)}")
-            # Baixa mídias novas + sincroniza horários no cache local
             threading.Thread(target=precache_new, args=(filtered,), daemon=True).start()
             threading.Thread(target=sync_schedules_to_cache, daemon=True).start()
-
         ads = fb_get("/anuncios")
         if ads and isinstance(ads, dict):
             ST.local_anuncios = ads
             LOCAL_AD_FILE.write_text(json.dumps(ads, ensure_ascii=False, indent=2), encoding="utf-8")
             ev("fb_data", playlists=ST.local_playlists, anuncios=ads)
-
         logs_d = fb_get("/logs")
         if logs_d and isinstance(logs_d, dict):
             LOCAL_LOG_FILE.write_text(json.dumps(logs_d, ensure_ascii=False, indent=2), encoding="utf-8")
             ev("fb_logs", logs=logs_d)
-
         ev("sync_done")
         return True
     except Exception as ex:
         log.warning(f"sync_from_firebase: {ex}")
         return False
 
-
 def auto_sync_loop():
-    """Polling de sincronização a cada 30s — garante que updates cheguem mesmo se SSE cair."""
-    time.sleep(10)  # aguarda inicialização
+    time.sleep(10)
     while True:
-        try:
-            sync_from_firebase()
-        except Exception as ex:
-            log.warning(f"auto_sync: {ex}")
+        try: sync_from_firebase()
+        except Exception as ex: log.warning(f"auto_sync: {ex}")
         time.sleep(30)
-
 
 def setup_listeners(cfg):
     def on_play(data):
@@ -615,15 +593,14 @@ def setup_listeners(cfg):
 
     def on_playlists(data):
         try:
-            # SSE envia null no primeiro evento (keep-alive) — ignora
             if data is None: return
             if not isinstance(data, dict): return
-            filtered = {k: v for k, v in data.items() if isinstance(v, dict) and not v.get("temp")}
+            filtered = {k: v for k, v in data.items()
+                        if isinstance(v, dict) and not v.get("temp")}
             ST.local_playlists = filtered
             ev("fb_data", playlists=filtered, anuncios=ST.local_anuncios)
             LOCAL_PL_FILE.write_text(json.dumps(filtered, ensure_ascii=False, indent=2), encoding="utf-8")
             log.info(f"🔄 SSE playlists: {len(filtered)} playlist(s)")
-            # Baixa mídias novas + sincroniza horários no cache local
             threading.Thread(target=precache_new, args=(filtered,), daemon=True).start()
             threading.Thread(target=sync_schedules_to_cache, daemon=True).start()
         except Exception as ex: log.error(f"on_playlists: {ex}")
@@ -645,10 +622,7 @@ def setup_listeners(cfg):
             LOCAL_LOG_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         except Exception as ex: log.error(f"on_logs: {ex}")
 
-    # Carga inicial via REST (mais confiável que esperar o SSE)
     threading.Thread(target=sync_from_firebase, daemon=True).start()
-
-    # SSE para updates em tempo real
     for path, cb, lbl in [
         ("/comandos/play_now", on_play,      "play_now"),
         ("/comandos/stop",     on_stop,      "stop"),
@@ -656,57 +630,38 @@ def setup_listeners(cfg):
         ("/anuncios",          on_anuncios,  "anuncios"),
         ("/logs",              on_logs,      "logs"),
     ]:
-        threading.Thread(target=_sse_listen, args=(path, cb), kwargs={"label": lbl}, daemon=True).start()
-
-    # Polling de backup a cada 30s (garante sync mesmo se SSE cair)
+        threading.Thread(target=_sse_listen, args=(path, cb),
+                         kwargs={"label": lbl}, daemon=True).start()
     threading.Thread(target=auto_sync_loop, daemon=True).start()
 
-# Mapa dia da semana → chave
 _DIAS_MAP = {0: "seg", 1: "ter", 2: "qua", 3: "qui", 4: "sex", 5: "sab", 6: "dom"}
 
 def check_schedules(cfg):
-    """
-    Verifica agendamentos a cada 20s.
-    Prioridade: arquivo local cacheado > URL remota.
-    Respeita horarios (array), horario (string legada) e dias da semana.
-    """
     fired: set = set()
-
     while True:
         time.sleep(20)
         try:
             if ST.playing: continue
-
             now       = datetime.now()
             now_t     = now.strftime("%H:%M")
             today_str = now.strftime("%Y-%m-%d")
             today_dia = _DIAS_MAP[now.weekday()]
-
             fired = {k for k in fired if k.startswith(today_str)}
-
-            # ── Fonte 1: playlists do Firebase (com horários) ──────────────
             for pl_id, pl in list(ST.local_playlists.items()):
                 if ST.playing: break
                 if not isinstance(pl, dict): continue
                 if not pl.get("ativa"): continue
-
                 for idx, item in enumerate(pl.get("itens") or []):
                     if ST.playing: break
                     if not isinstance(item, dict): continue
-
                     horarios_item = get_item_horarios(item)
                     if not horarios_item: continue
                     if now_t not in horarios_item: continue
-
                     dias_item = item.get("dias")
                     if isinstance(dias_item, list) and len(dias_item) > 0:
-                        if today_dia not in dias_item:
-                            continue
-
+                        if today_dia not in dias_item: continue
                     fk = f"{today_str} {now_t} {pl_id} {idx}"
                     if fk in fired: continue
-
-                    # Prefere arquivo local se disponível
                     url        = item.get("url", "")
                     local_path = get_cached(url) if url else None
                     item_play  = dict(item)
@@ -715,16 +670,11 @@ def check_schedules(cfg):
                         log.info(f"⏰ {now_t} ({today_dia}): [LOCAL] {item.get('nome','?')}")
                     else:
                         log.info(f"⏰ {now_t} ({today_dia}): [STREAM] {item.get('nome','?')}")
-
                     fired.add(fk)
                     sub = {"nome": f"{pl.get('nome','?')} @ {now_t}", "itens": [item_play]}
                     start_playlist(sub, cfg, force=True)
                     break
-
             if ST.playing: continue
-
-            # ── Fonte 2: arquivos locais com horários no cache index ────────
-            # Toca mídias que estão salvas localmente mas não têm playlist ativa
             idx_data = load_cache_index()
             for k, meta in list(idx_data.items()):
                 if ST.playing: break
@@ -732,17 +682,12 @@ def check_schedules(cfg):
                 horarios = meta.get("horarios") or []
                 dias     = meta.get("dias") or []
                 nome     = meta.get("nome", Path(path).stem if path else "?")
-
                 if not path or not Path(path).exists(): continue
                 if not horarios: continue
                 if now_t not in horarios: continue
                 if dias and today_dia not in dias: continue
-
-                # Verifica se já foi disparado por uma playlist (evita duplo disparo)
                 fk = f"{today_str} {now_t} local_{k}"
                 if fk in fired: continue
-
-                # Verifica se alguma playlist ativa já cobre essa URL
                 url = meta.get("url", "")
                 ja_coberto = False
                 if url:
@@ -750,29 +695,18 @@ def check_schedules(cfg):
                         if not isinstance(pl, dict) or not pl.get("ativa"): continue
                         for it in (pl.get("itens") or []):
                             if it.get("url") == url and get_item_horarios(it):
-                                ja_coberto = True
-                                break
+                                ja_coberto = True; break
                         if ja_coberto: break
-
-                if ja_coberto: continue  # playlist já cuida disso
-
+                if ja_coberto: continue
                 log.info(f"⏰ {now_t} ({today_dia}): [CACHE] {nome}")
                 fired.add(fk)
-                item_local = {
-                    "nome":    nome,
-                    "url":     url,
-                    "path":    path,
-                    "loops":   meta.get("loops", 1),
-                    "tipo":    meta.get("tipo", ""),
-                    "horarios": horarios,
-                    "dias":     dias,
-                }
+                item_local = {"nome": nome, "url": url, "path": path,
+                              "loops": meta.get("loops", 1), "tipo": meta.get("tipo", ""),
+                              "horarios": horarios, "dias": dias}
                 sub = {"nome": f"Cache @ {now_t}", "itens": [item_local]}
                 start_playlist(sub, cfg, force=True)
                 break
-
-        except Exception as ex:
-            log.error(f"schedule: {ex}")
+        except Exception as ex: log.error(f"schedule: {ex}")
 
 def heartbeat(cfg):
     while True:
@@ -783,7 +717,6 @@ def heartbeat(cfg):
         time.sleep(10)
 
 def precache_all(silent=False):
-    """Baixa todas as mídias que ainda não estão em cache."""
     if not silent: log.info("🔽 Pre-cache iniciando...")
     count = 0
     for pl in ST.local_playlists.values():
@@ -791,49 +724,32 @@ def precache_all(silent=False):
         for item in (pl.get("itens") or []):
             url = item.get("url", "")
             if not url: continue
-            if get_cached(url): continue   # já tem cache — pula
+            if get_cached(url): continue
             nome = item.get("nome", "?")
             log.info(f"🔽 Baixando: {nome}")
             result = get_audio(url, nome)
-            if result:
-                count += 1
-                ev("local_updated")
-            else:
-                log.warning(f"⚠️  Falha ao baixar: {nome}")
-    if count > 0:
-        log.info(f"✅ Cache: {count} arquivo(s) baixado(s)")
-    elif not silent:
-        log.info("✅ Cache: todos os arquivos já estão baixados")
+            if result: count += 1; ev("local_updated")
+            else: log.warning(f"⚠️  Falha ao baixar: {nome}")
+    if count > 0: log.info(f"✅ Cache: {count} arquivo(s) baixado(s)")
+    elif not silent: log.info("✅ Cache: todos os arquivos já estão baixados")
     ev("cache_done"); ev("local_updated")
 
-
 def precache_new(playlists_dict):
-    """
-    Verifica mídias novas e baixa em background.
-    Também atualiza horários/dias de arquivos já cacheados.
-    """
-    # Coleta todas as mídias com seus metadados
-    items_map = {}  # url → item com horarios/dias mais recentes
+    items_map = {}
     for pl in playlists_dict.values():
         if not isinstance(pl, dict): continue
         for item in (pl.get("itens") or []):
             url = item.get("url", "")
             if not url: continue
-            items_map[url] = item  # última definição vence
-
+            items_map[url] = item
     if not items_map: return
-
-    novas = [(url, item) for url, item in items_map.items() if not get_cached(url)]
+    novas      = [(url, item) for url, item in items_map.items() if not get_cached(url)]
     existentes = [(url, item) for url, item in items_map.items() if get_cached(url)]
-
-    # Atualiza horários de arquivos já cacheados
     for url, item in existentes:
         horarios = get_item_horarios(item)
         dias     = item.get("dias") or ["dom","seg","ter","qua","qui","sex","sab"]
         update_cached_schedules(url, horarios, dias)
-
     if not novas: return
-
     log.info(f"🔽 {len(novas)} mídia(s) nova(s) para baixar...")
     for url, item in novas:
         if get_cached(url): continue
@@ -843,11 +759,9 @@ def precache_new(playlists_dict):
         log.info(f"🔽 Baixando: {nome}")
         result = get_audio(url, nome)
         if result:
-            # Salva horários junto com o cache
             update_cached_schedules(url, horarios, dias)
             ev("local_updated")
-        else:
-            log.warning(f"⚠️  Falha ao baixar: {nome}")
+        else: log.warning(f"⚠️  Falha ao baixar: {nome}")
     ev("cache_done"); ev("local_updated")
 
 def load_local_data():
@@ -857,18 +771,92 @@ def load_local_data():
         except: pass
     ST.local_schedules = load_schedules()
 
+# ─── Startup automático ──────────────────────────────────────────────────────
+def _get_startup_path():
+    system = platform.system()
+    if system == "Windows":
+        startup_dir = (Path(os.environ.get("APPDATA", ""))
+                       / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup")
+        return startup_dir / "PlayAds.bat", "windows"
+    elif system == "Darwin":
+        return Path.home() / "Library" / "LaunchAgents" / "com.playads.player.plist", "macos"
+    elif system == "Linux":
+        return Path.home() / ".config" / "autostart" / "playads.desktop", "linux"
+    return None, system
 
-# ══════════════════════════════════════════════════════════════════════════════
+def is_startup_enabled():
+    path, _ = _get_startup_path()
+    return path is not None and path.exists()
+
+def enable_startup():
+    exe = sys.executable
+    try:
+        path, sysname = _get_startup_path()
+        if path is None:
+            return False, "Sistema não suportado para startup automático."
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if sysname == "windows":
+            path.write_text(f'@echo off\nstart "" "{exe}"\n', encoding="utf-8")
+            return True, "PlayAds adicionado ao início automático do Windows ✓"
+        elif sysname == "macos":
+            plist = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"\n'
+                '  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+                '<plist version="1.0"><dict>\n'
+                '  <key>Label</key><string>com.playads.player</string>\n'
+                f'  <key>ProgramArguments</key><array><string>{exe}</string></array>\n'
+                '  <key>RunAtLoad</key><true/>\n'
+                '  <key>KeepAlive</key><false/>\n'
+                '</dict></plist>'
+            )
+            path.write_text(plist)
+            subprocess.run(["launchctl", "load", str(path)], capture_output=True)
+            return True, "PlayAds adicionado ao Login Items do macOS ✓"
+        elif sysname == "linux":
+            path.write_text(
+                "[Desktop Entry]\nType=Application\nName=PlayAds\n"
+                f"Exec={exe}\nHidden=false\nNoDisplay=false\n"
+                "X-GNOME-Autostart-enabled=true\n"
+            )
+            return True, "PlayAds adicionado ao autostart do Linux ✓"
+        return False, "Sistema não reconhecido."
+    except Exception as ex:
+        return False, f"Erro: {ex}"
+
+def disable_startup():
+    try:
+        path, sysname = _get_startup_path()
+        if path and path.exists():
+            if sysname == "macos":
+                subprocess.run(["launchctl", "unload", str(path)], capture_output=True)
+            path.unlink()
+        return True, "PlayAds removido do início automático ✓"
+    except Exception as ex:
+        return False, f"Erro ao remover: {ex}"
+
+# ─── Restart ─────────────────────────────────────────────────────────────────
+def restart_app():
+    """Fecha a janela pywebview e relança o processo."""
+    exe  = sys.executable
+    args = sys.argv[:]
+    def _go():
+        time.sleep(0.5)
+        subprocess.Popen([exe] + args[1:])
+        os._exit(0)
+    threading.Thread(target=_go, daemon=True).start()
+    try: webview.windows[0].destroy()
+    except: pass
+
+# ═════════════════════════════════════════════════════════════════════════════
 #  BRIDGE
-# ══════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════════════
 class Bridge:
     def get_events(self):
         events = []
         try:
-            while True:
-                events.append(EVQ.get_nowait())
-        except queue.Empty:
-            pass
+            while True: events.append(EVQ.get_nowait())
+        except queue.Empty: pass
         return events
 
     def get_init_info(self):
@@ -885,17 +873,19 @@ class Bridge:
         }
 
     def play_item_now(self, item_dict):
-        cfg = load_config()
-        pl  = {"nome": f"▶ {item_dict.get('nome','?')}", "temp": True, "itens": [item_dict]}
+        cfg   = load_config()
+        pl    = {"nome": f"▶ {item_dict.get('nome','?')}", "temp": True, "itens": [item_dict]}
         loops = int(item_dict.get("loops", 1))
-        threading.Thread(target=start_playlist, args=(pl, cfg, True), kwargs={"loops_override": loops}, daemon=True).start()
+        threading.Thread(target=start_playlist, args=(pl, cfg, True),
+                         kwargs={"loops_override": loops}, daemon=True).start()
         return True
 
     def play_playlist_now(self, data):
         cfg   = load_config()
         pl    = data.get("playlist", {})
         loops = int(data.get("loops", 1))
-        threading.Thread(target=start_playlist, args=(pl, cfg, True), kwargs={"loops_override": loops}, daemon=True).start()
+        threading.Thread(target=start_playlist, args=(pl, cfg, True),
+                         kwargs={"loops_override": loops}, daemon=True).start()
         return True
 
     def cmd_stop(self):
@@ -927,8 +917,9 @@ class Bridge:
 
     def cmd_disconnect(self):
         def _go():
-            stop_all(); clear_all_local()
-            import webview
+            stop_all()
+            disable_startup()   # limpa startup ao desconectar
+            clear_all_local()
             webview.windows[0].destroy()
         threading.Thread(target=_go, daemon=True).start()
         return True
@@ -939,6 +930,11 @@ class Bridge:
             save_activation(uid, em or email, codigo, senha)
             return {"ok": True, "uid": uid, "email": em or email, "codigo": codigo}
         return {"ok": False, "error": err or "Credenciais inválidas."}
+
+    def cmd_restart(self):
+        """Reinicia o aplicativo — chamado após ativação bem-sucedida."""
+        threading.Thread(target=restart_app, daemon=True).start()
+        return True
 
     def open_web(self):
         import webbrowser; webbrowser.open(WEB_URL); return True
@@ -952,25 +948,52 @@ class Bridge:
         except Exception as e:
             log.error(f"save_schedules: {e}"); return False
 
+    def save_schedules(self, schedules_list):
+        return self.save_schedules_list(schedules_list)
+
     def get_schedules(self):
         return load_schedules()
 
     def cmd_refresh(self):
-        """Força re-sincronização com Firebase + download de mídias novas."""
         def _go():
             log.info("🔄 Refresh manual solicitado...")
             ok = sync_from_firebase()
             if ok:
                 log.info("✅ Dados sincronizados")
-                # Garante download de qualquer mídia pendente
                 threading.Thread(target=precache_all, kwargs={"silent": True}, daemon=True).start()
             else:
                 log.warning("⚠️  Falha ao sincronizar — verifique a conexão")
         threading.Thread(target=_go, daemon=True).start()
         return True
 
+    # ── Startup ────────────────────────────────────────────────────
+    def get_startup_status(self):
+        try: return is_startup_enabled()
+        except: return False
 
-# ─── Backend startup ─────────────────────────────────────────────────────────
+    def toggle_startup(self, enable):
+        try:
+            ok, msg = enable_startup() if enable else disable_startup()
+            log.info(f"toggle_startup({enable}): {msg}")
+            return {"ok": ok, "msg": msg}
+        except Exception as ex:
+            return {"ok": False, "error": str(ex)}
+
+    # ── Integrações de plataforma ───────────────────────────────────
+    def connect_platform(self, platform_id):
+        msgs = {
+            "spotify":       "Integração direta com Spotify está em desenvolvimento. O duck automático via pycaw já funciona.",
+            "youtube_music": "Controle via pycaw já ativo. API direta em desenvolvimento.",
+            "deezer":        "Controle via pycaw já ativo. Integração planejada para próxima versão.",
+            "amazon_music":  "Controle via pycaw já ativo. API da Amazon tem acesso muito restrito.",
+        }
+        return {"ok": False, "error": msgs.get(platform_id, "Plataforma não reconhecida.")}
+
+    def disconnect_platform(self, platform_id):
+        return {"ok": True}
+
+
+# ─── Backend startup ──────────────────────────────────────────────────────────
 def start_backend(senha):
     if not auth_sign_in(ST.email, senha):
         log.error("Firebase: falha no login"); ev("firebase_err"); return False
@@ -1001,12 +1024,13 @@ def start_backend(senha):
     threading.Thread(target=precache_all,    daemon=True).start()
 
     log.info(f"Backend iniciado: {ST.email} · {ST.codigo}")
-    log.info(f"pycaw:  {'ativo ✓' if HAS_PYCAW else 'não instalado'}")
-    log.info(f"yt-dlp: {'ativo ✓' if HAS_YTDLP else 'não instalado'}")
+    log.info(f"pycaw:   {'ativo ✓' if HAS_PYCAW  else 'não instalado'}")
+    log.info(f"yt-dlp:  {'ativo ✓' if HAS_YTDLP  else 'não instalado'}")
+    log.info(f"startup: {'ativo ✓' if is_startup_enabled() else 'desativado'}")
     return True
 
 
-# ─── URL da interface ────────────────────────────────────────────────────────
+# ─── URL da interface ─────────────────────────────────────────────────────────
 UI_MODE = "online"
 UI_URL  = "https://playads-app.web.app/"
 
@@ -1015,10 +1039,9 @@ def get_ui_url():
         return UI_URL
     dist_html = STATIC_DIR / "dist" / "index.html"
     if not dist_html.exists():
-        import subprocess
         npm = "npm.cmd" if platform.system() == "Windows" else "npm"
         try:
-            subprocess.run([npm, "install"], cwd=str(BASE_DIR), check=True)
+            subprocess.run([npm, "install"],      cwd=str(BASE_DIR), check=True)
             subprocess.run([npm, "run", "build"], cwd=str(BASE_DIR), check=True)
         except Exception as e:
             print(f"Erro no build: {e}"); sys.exit(1)
@@ -1036,13 +1059,13 @@ def main():
         ST.email  = act["email"]
         ST.codigo = act["codigo"]
         threading.Thread(target=start_backend, args=(act["senha"],), daemon=True).start()
-        window = webview.create_window(
+        webview.create_window(
             "PlayAds", url=url, js_api=bridge,
             width=1060, height=680, min_size=(880, 560),
             background_color="#080612",
         )
     else:
-        window = webview.create_window(
+        webview.create_window(
             "PlayAds — Ativação", url=url, js_api=bridge,
             width=520, height=620, resizable=False,
             background_color="#080612",
