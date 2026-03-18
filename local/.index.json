@@ -1,0 +1,22 @@
+{
+  "aea8723664543d11f46192e444112ed8": {
+    "path": "c:\\Users\\micae\\Documents\\playads-v7\\playads-zip\\local\\aea8723664543d11f46192e444112ed8.wav",
+    "nome": "1 andar sem filas",
+    "tipo": "WAV",
+    "ts": 1773849366,
+    "tamanho": 909390,
+    "horarios": [
+      "12:18"
+    ],
+    "dias": [
+      "dom",
+      "seg",
+      "ter",
+      "qua",
+      "qui",
+      "sex",
+      "sab"
+    ],
+    "url": "https://firebasestorage.googleapis.com/v0/b/anucio-web.firebasestorage.app/o/users%2Fadm%40gmail%2Ccom%2Faudios%2F1773846995644_1_andar_sem_filas.wav?alt=media&token=a08a907a-dbec-4ed9-9751-1d1e74b9d1db"
+  }
+}
