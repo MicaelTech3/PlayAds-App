@@ -164,18 +164,58 @@ def save_schedules(data):
     SCHEDULES_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 def validate_and_login(codigo, email, senha):
+    """
+    Valida a ativação garantindo que:
+      1. O código existe no Firebase e tem um uid dono.
+      2. O email+senha pertencem a uma conta Firebase válida.
+      3. O uid autenticado bate EXATAMENTE com o uid dono do código.
+    Sem a verificação (3) qualquer conta válida poderia usar o código de outro usuário.
+    """
     codigo = codigo.strip().upper()
+
+    # ── Passo 1: busca o uid dono do código ──────────────────────────────────
     try:
         r = requests.get(f"{FIREBASE_DB_URL}/codigos/{codigo}.json", timeout=10)
-        if not r.ok: return None, None, "Servidor indisponível."
+        if not r.ok:
+            return None, None, "Servidor indisponível."
         data = r.json()
-        if not data: return None, None, "Código inválido."
-        uid = data.get("uid")
-        if not uid: return None, None, "Código inválido."
+        if not data:
+            return None, None, "Código inválido."
+        uid_codigo = data.get("uid")
+        if not uid_codigo:
+            return None, None, "Código inválido."
     except Exception as e:
         return None, None, f"Erro de conexão: {e}"
-    if not auth_sign_in(email, senha): return None, None, "E-mail ou senha incorretos."
-    return uid, email, None
+
+    # ── Passo 2: autentica o email+senha e obtém o uid do usuário ────────────
+    try:
+        r2 = requests.post(
+            f"{FIREBASE_AUTH_URL}:signInWithPassword?key={FIREBASE_WEB_API_KEY}",
+            json={"email": email, "password": senha, "returnSecureToken": True},
+            timeout=10,
+        )
+        if not r2.ok:
+            return None, None, "E-mail ou senha incorretos."
+        auth_data = r2.json()
+        uid_autenticado = auth_data.get("localId")
+        if not uid_autenticado:
+            return None, None, "Falha na autenticação."
+
+        # Armazena o token para uso posterior
+        with _AUTH.lock:
+            _AUTH.id_token      = auth_data["idToken"]
+            _AUTH.refresh_token = auth_data["refreshToken"]
+            _AUTH.expires_at    = time.time() + int(auth_data.get("expiresIn", 3600)) - 60
+
+    except Exception as e:
+        return None, None, f"Erro de autenticação: {e}"
+
+    # ── Passo 3: garante que o uid autenticado é o dono do código ────────────
+    if uid_autenticado != uid_codigo:
+        # Segurança: não revela qual das duas informações está errada
+        return None, None, "Código, e-mail ou senha incorretos."
+
+    return uid_autenticado, email, None
 
 # ─── Cache / Local ────────────────────────────────────────────────────────────
 def load_cache_index():
@@ -1158,4 +1198,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
