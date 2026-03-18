@@ -1,5 +1,5 @@
 // src/pages/index.jsx  (LogsPage + ConfigPage + AccountPage)
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext";
 
 // ══════════════════════════════════════════════════════════════════
@@ -122,102 +122,79 @@ function DepsSection({ call }) {
   const all_ok   = miss_req.length === 0 && miss_opt.length === 0;
 
   return (
-    <div className="config-section" style={{ marginBottom: 0 }}>
-      <div className="config-section-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        Dependências do Sistema
-        {!all_ok && (
-          <span style={{
-            fontSize: 9, padding: "2px 7px", borderRadius: 99, fontFamily: "var(--font-mono)", fontWeight: 700,
-            background: miss_req.length ? "rgba(244,63,94,.12)" : "rgba(245,158,11,.12)",
-            color:      miss_req.length ? "var(--danger)"       : "#f59e0b",
-            border:    `1px solid ${miss_req.length ? "rgba(244,63,94,.25)" : "rgba(245,158,11,.25)"}`,
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {Object.entries(DEP_INFO).map(([key, info]) => {
+        const ok = !!deps[key];
+        return (
+          <div key={key} style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "8px 12px", borderRadius: 8,
+            background: "var(--surface2)", border: "1px solid var(--border)",
           }}>
-            {miss_req.length ? `${miss_req.length} FALTANDO` : `${miss_opt.length} OPCIONAL`}
-          </span>
-        )}
-        <button onClick={loadDeps} title="Recarregar" style={{
-          marginLeft: "auto", background: "none", border: "none", cursor: "pointer",
-          color: "var(--muted)", fontSize: 14, padding: "0 4px",
-        }}>↻</button>
-      </div>
-
-      {/* Lista */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-        {Object.entries(DEP_INFO).map(([key, info]) => {
-          const ok = !!deps[key];
-          return (
-            <div key={key} style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "8px 12px", borderRadius: 8,
-              background: "var(--surface2)", border: "1px solid var(--border)",
-            }}>
-              <span style={{ fontSize: 13, color: ok ? "var(--green)" : info.required ? "var(--danger)" : "#f59e0b" }}>
-                {ok ? "●" : "○"}
-              </span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{info.name}</div>
-                <div style={{ fontSize: 10, color: "var(--muted)" }}>{info.desc}</div>
-              </div>
-              <span style={{
-                fontSize: 9, fontFamily: "var(--font-mono)", padding: "2px 7px", borderRadius: 99,
-                background: ok ? "rgba(52,211,153,.1)" : info.required ? "rgba(244,63,94,.1)" : "rgba(245,158,11,.1)",
-                color:      ok ? "var(--green)"        : info.required ? "var(--danger)"       : "#f59e0b",
-                border:    `1px solid ${ok ? "rgba(52,211,153,.2)" : info.required ? "rgba(244,63,94,.2)" : "rgba(245,158,11,.2)"}`,
-              }}>
-                {ok ? "OK" : info.required ? "FALTA" : "OPCIONAL"}
-              </span>
+            <span style={{ fontSize: 13, color: ok ? "var(--green)" : info.required ? "var(--danger)" : "#f59e0b" }}>
+              {ok ? "●" : "○"}
+            </span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{info.name}</div>
+              <div style={{ fontSize: 10, color: "var(--muted)" }}>{info.desc}</div>
             </div>
-          );
-        })}
+            <span style={{
+              fontSize: 9, fontFamily: "var(--font-mono)", padding: "2px 7px", borderRadius: 99,
+              background: ok ? "rgba(52,211,153,.1)" : info.required ? "rgba(244,63,94,.1)" : "rgba(245,158,11,.1)",
+              color:      ok ? "var(--green)"        : info.required ? "var(--danger)"       : "#f59e0b",
+              border:    `1px solid ${ok ? "rgba(52,211,153,.2)" : info.required ? "rgba(244,63,94,.2)" : "rgba(245,158,11,.2)"}`,
+            }}>
+              {ok ? "OK" : info.required ? "FALTA" : "OPCIONAL"}
+            </span>
+          </div>
+        );
+      })}
+
+      <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6 }}>
+        {miss_req.length > 0 && (
+          <button
+            onClick={() => installPkgs([...miss_req, ...miss_opt])}
+            disabled={installing}
+            style={{
+              background: "var(--danger)", color: "white", border: "none",
+              borderRadius: 8, padding: "10px 18px", cursor: installing ? "default" : "pointer",
+              fontSize: 12, fontWeight: 700, opacity: installing ? 0.7 : 1,
+              display: "flex", alignItems: "center", gap: 8, justifyContent: "center",
+            }}
+          >
+            {installing ? "Instalando..." : `⬇  Instalar Dependências (${miss_req.length + miss_opt.length} pacotes)`}
+          </button>
+        )}
+
+        {miss_req.length === 0 && miss_opt.length > 0 && (
+          <button
+            onClick={() => installPkgs(miss_opt)}
+            disabled={installing}
+            style={{
+              background: "rgba(245,158,11,.1)", color: "#f59e0b",
+              border: "1px solid rgba(245,158,11,.25)",
+              borderRadius: 8, padding: "10px 18px", cursor: installing ? "default" : "pointer",
+              fontSize: 12, fontWeight: 700, opacity: installing ? 0.7 : 1,
+              display: "flex", alignItems: "center", gap: 8, justifyContent: "center",
+            }}
+          >
+            {installing ? "Instalando..." : `⬇  Instalar Opcionais (${miss_opt.length} pacotes)`}
+          </button>
+        )}
+
+        {all_ok && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
+            background: "rgba(52,211,153,.08)", border: "1px solid rgba(52,211,153,.2)",
+            borderRadius: 8, fontSize: 11, color: "var(--green)",
+          }}>
+            ✓ Todas as dependências instaladas
+          </div>
+        )}
       </div>
 
-      {/* Botões */}
-      {miss_req.length > 0 && (
-        <button
-          onClick={() => installPkgs([...miss_req, ...miss_opt])}
-          disabled={installing}
-          style={{
-            background: "var(--danger)", color: "white", border: "none",
-            borderRadius: 8, padding: "10px 18px", cursor: installing ? "default" : "pointer",
-            fontSize: 12, fontWeight: 700, opacity: installing ? 0.7 : 1,
-            display: "flex", alignItems: "center", gap: 8, marginBottom: 8, width: "100%",
-            justifyContent: "center",
-          }}
-        >
-          {installing ? "Instalando..." : `⬇  Instalar Dependências (${miss_req.length + miss_opt.length} pacotes)`}
-        </button>
-      )}
-
-      {miss_req.length === 0 && miss_opt.length > 0 && (
-        <button
-          onClick={() => installPkgs(miss_opt)}
-          disabled={installing}
-          style={{
-            background: "rgba(245,158,11,.1)", color: "#f59e0b",
-            border: "1px solid rgba(245,158,11,.25)",
-            borderRadius: 8, padding: "10px 18px", cursor: installing ? "default" : "pointer",
-            fontSize: 12, fontWeight: 700, opacity: installing ? 0.7 : 1,
-            display: "flex", alignItems: "center", gap: 8, marginBottom: 8, width: "100%",
-            justifyContent: "center",
-          }}
-        >
-          {installing ? "Instalando..." : `⬇  Instalar Opcionais (${miss_opt.length} pacotes)`}
-        </button>
-      )}
-
-      {all_ok && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
-          background: "rgba(52,211,153,.08)", border: "1px solid rgba(52,211,153,.2)",
-          borderRadius: 8, fontSize: 11, color: "var(--green)",
-        }}>
-          ✓ Todas as dependências instaladas
-        </div>
-      )}
-
-      {/* Log */}
       {log.length > 0 && (
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 8 }}>
           <button onClick={() => setExpanded(v => !v)} style={{
             background: "none", border: "none", color: "var(--muted)",
             cursor: "pointer", fontSize: 10, fontFamily: "var(--font-mono)", padding: 0, marginBottom: 4,
@@ -249,22 +226,199 @@ function DepsSection({ call }) {
 // ══════════════════════════════════════════════════════════════════
 //  CONFIG PAGE
 // ══════════════════════════════════════════════════════════════════
+
+// ── Ícones dos quick-action cards ────────────────────────────────
+const IcoVolume = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+  </svg>
+);
+const IcoDeps = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="3" width="20" height="14" rx="2"/>
+    <line x1="8" y1="21" x2="16" y2="21"/>
+    <line x1="12" y1="17" x2="12" y2="21"/>
+  </svg>
+);
+const IcoWeb = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="2" y1="12" x2="22" y2="12"/>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+  </svg>
+);
+const IcoUpdate = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="23 4 23 10 17 10"/>
+    <polyline points="1 20 1 14 7 14"/>
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+  </svg>
+);
+const IcoStartup = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 22V12"/>
+    <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
+    <path d="M12 2a5 5 0 0 1 5 5v5H7V7a5 5 0 0 1 5-5z"/>
+  </svg>
+);
+
+// ── Slider de volume ──────────────────────────────────────────────
+function VolumeSlider({ label, value, onChange, color, icon }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color }}>{icon}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{label}</span>
+        </div>
+        <div style={{
+          fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700, color,
+          background: `${color}18`, border: `1px solid ${color}33`,
+          borderRadius: 6, padding: "2px 10px", minWidth: 44, textAlign: "center",
+        }}>
+          {value}%
+        </div>
+      </div>
+      <div style={{ position: "relative", height: 6, borderRadius: 99, background: "var(--surface3)", border: "1px solid var(--border)" }}>
+        <div style={{
+          position: "absolute", left: 0, top: 0, height: "100%",
+          width: `${value}%`, borderRadius: 99,
+          background: `linear-gradient(90deg, ${color}99, ${color})`,
+          transition: "width 0.1s",
+        }} />
+        <input
+          type="range" min={0} max={100} value={value}
+          onChange={e => onChange(Number(e.target.value))}
+          style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%",
+            opacity: 0, cursor: "pointer", margin: 0,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Card expansível ───────────────────────────────────────────────
+function ExpandCard({ icon, label, badge, badgeColor, badgeBg, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{
+      background: "var(--surface2)",
+      border: `1px solid ${open ? "rgba(139,92,246,0.25)" : "var(--border)"}`,
+      borderRadius: 12, overflow: "hidden",
+      transition: "border-color 0.2s",
+    }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 12,
+          padding: "14px 16px", background: "none", border: "none",
+          cursor: "pointer", textAlign: "left",
+        }}
+      >
+        <div style={{
+          width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+          background: open ? "rgba(139,92,246,0.15)" : "var(--surface3)",
+          border: `1px solid ${open ? "rgba(139,92,246,0.3)" : "var(--border)"}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: open ? "var(--p1)" : "var(--muted)", transition: "all 0.2s",
+        }}>
+          {icon}
+        </div>
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{label}</span>
+        {badge && (
+          <span style={{
+            fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700,
+            padding: "2px 8px", borderRadius: 99,
+            background: badgeBg || "rgba(139,92,246,0.12)",
+            color: badgeColor || "var(--p1)",
+            border: `1px solid ${badgeColor ? badgeColor + "44" : "rgba(139,92,246,0.25)"}`,
+          }}>{badge}</span>
+        )}
+        <svg
+          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2"
+          style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }}
+        >
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {open && (
+        <div style={{ padding: "0 16px 16px" }}>
+          <div style={{ height: 1, background: "var(--border)", marginBottom: 14 }} />
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ConfigPage() {
   const { state, setState, call } = useApp();
-  const { config } = state;
+  const { config, cacheInfo } = state;
 
-  const fields = [
-    { key: "player_nome",    label: "Nome do Player",     hint: "Identificação deste player" },
-    { key: "volume_anuncio", label: "Volume anúncio (%)", hint: "0 – 100  (volume dos anúncios)" },
-    { key: "volume_outros",  label: "Volume outros (%)",  hint: "0 – 100  (outras apps ao tocar)" },
-    { key: "duck_fade_ms",   label: "Fade duck (ms)",     hint: "500 – 3000  (duração do fade)" },
-  ];
+  // ── Nome do player (edição inline) ────────────────────────────
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft,   setNameDraft]   = useState("");
+  const nameInputRef = useRef(null);
 
-  const update = (key, val) =>
-    setState((s) => ({ ...s, config: { ...s.config, [key]: val } }));
+  const startEditName = () => {
+    setNameDraft(config?.player_nome || "");
+    setEditingName(true);
+    setTimeout(() => nameInputRef.current?.focus(), 50);
+  };
+  const saveNameInline = () => {
+    if (nameDraft.trim()) {
+      setState(s => ({ ...s, config: { ...s.config, player_nome: nameDraft.trim() } }));
+    }
+    setEditingName(false);
+  };
 
+  // ── Volume ────────────────────────────────────────────────────
+  const [volAnuncio, setVolAnuncio] = useState(config?.volume_anuncio ?? 100);
+  const [volOutros,  setVolOutros]  = useState(config?.volume_outros  ?? 10);
+  const [fadeDuck,   setFadeDuck]   = useState(config?.duck_fade_ms   ?? 1200);
+
+  useEffect(() => {
+    setVolAnuncio(config?.volume_anuncio ?? 100);
+    setVolOutros(config?.volume_outros   ?? 10);
+    setFadeDuck(config?.duck_fade_ms     ?? 1200);
+  }, [config]);
+
+  // ── Startup ───────────────────────────────────────────────────
+  const [startupEnabled, setStartupEnabled] = useState(false);
+  const [startupLoading, setStartupLoading] = useState(false);
+  const [startupMsg,     setStartupMsg]     = useState("");
+
+  useEffect(() => {
+    call("get_startup_status").then(r => { if (r != null) setStartupEnabled(!!r); }).catch(() => {});
+  }, []);
+
+  const handleStartupToggle = async () => {
+    setStartupLoading(true); setStartupMsg("");
+    try {
+      const res = await call("toggle_startup", !startupEnabled);
+      if (res?.ok) { setStartupEnabled(v => !v); setStartupMsg(res.msg || ""); }
+      else setStartupMsg(res?.error || "Não foi possível alterar.");
+    } catch { setStartupMsg("Erro ao alterar."); }
+    finally {
+      setStartupLoading(false);
+      setTimeout(() => setStartupMsg(""), 5000);
+    }
+  };
+
+  // ── Save all ──────────────────────────────────────────────────
   const save = () => {
-    call("save_config", config).then(() => {
+    const newConfig = {
+      ...config,
+      volume_anuncio: volAnuncio,
+      volume_outros:  volOutros,
+      duck_fade_ms:   fadeDuck,
+    };
+    setState(s => ({ ...s, config: newConfig }));
+    call("save_config", newConfig).then(() => {
       const el = document.createElement("div");
       el.textContent = "✓  Configurações salvas";
       Object.assign(el.style, {
@@ -278,42 +432,370 @@ export function ConfigPage() {
     });
   };
 
+  const LOCAL_DIR = window.__playads_local_dir || "local/";
+  const isStartupErr = startupMsg.toLowerCase().includes("erro") || startupMsg.includes("possível");
+
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
       <div className="page-header">
         <div className="page-header-accent" style={{ background: "var(--muted2)" }} />
         <span className="page-title">Configurações</span>
+        <span className="page-sub">Player e sistema</span>
       </div>
 
-      <div className="config-layout">
-        {/* ── Configurações do Player ── */}
-        <div className="config-section">
-          <div className="config-section-title">Player</div>
-          {fields.map(({ key, label, hint }) => (
-            <div key={key} className="field-row">
-              <div>
-                <div className="field-label">{label}</div>
-                <div className="field-hint">{hint}</div>
+      <div style={{ overflowY: "auto", flex: 1 }}>
+        <div className="config-layout">
+
+          {/* ── Nome do Player ── */}
+          <div style={{ marginBottom: 28 }}>
+            <div style={{
+              fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "1.5px",
+              textTransform: "uppercase", color: "var(--muted)", marginBottom: 10,
+            }}>Nome do Player</div>
+
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "14px 16px",
+              background: "var(--surface2)", border: "1px solid var(--border)",
+              borderRadius: 12,
+            }}>
+              {/* Avatar / ícone */}
+              <div style={{
+                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                background: "linear-gradient(135deg, rgba(139,92,246,0.3), rgba(34,211,238,0.2))",
+                border: "1px solid rgba(139,92,246,0.3)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--p1)" strokeWidth="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/>
+                  <line x1="8" y1="21" x2="16" y2="21"/>
+                  <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
               </div>
-              <input
-                className="field-input"
-                value={config?.[key] ?? ""}
-                onChange={(e) => update(key, e.target.value)}
-              />
-              <div />
+
+              {editingName ? (
+                <input
+                  ref={nameInputRef}
+                  value={nameDraft}
+                  onChange={e => setNameDraft(e.target.value)}
+                  onBlur={saveNameInline}
+                  onKeyDown={e => { if (e.key === "Enter") saveNameInline(); if (e.key === "Escape") setEditingName(false); }}
+                  style={{
+                    flex: 1, background: "var(--surface3)", border: "1px solid rgba(139,92,246,0.5)",
+                    borderRadius: 7, padding: "6px 10px", color: "var(--text)",
+                    fontSize: 14, fontWeight: 700, fontFamily: "var(--font-display)",
+                    outline: "none",
+                  }}
+                />
+              ) : (
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+                    {config?.player_nome || "Player Principal"}
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--font-mono)", marginTop: 2 }}>
+                    Identificação deste player no painel
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={editingName ? saveNameInline : startEditName}
+                title={editingName ? "Salvar nome" : "Editar nome"}
+                style={{
+                  background: editingName ? "rgba(52,211,153,0.12)" : "var(--surface3)",
+                  border: `1px solid ${editingName ? "rgba(52,211,153,0.3)" : "var(--border)"}`,
+                  borderRadius: 8, padding: "7px 10px", cursor: "pointer",
+                  color: editingName ? "var(--green)" : "var(--muted)",
+                  display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600,
+                  transition: "all 0.15s",
+                }}
+              >
+                {editingName ? (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Salvar
+                  </>
+                ) : (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    Editar
+                  </>
+                )}
+              </button>
             </div>
-          ))}
+          </div>
+
+          {/* ── Cards expansíveis ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+
+            {/* Volume */}
+            <ExpandCard
+              icon={<IcoVolume />}
+              label="Volume & Duck de Volume"
+              badge="Áudio"
+              badgeColor="var(--cyan)"
+              badgeBg="rgba(34,211,238,0.1)"
+            >
+              <VolumeSlider
+                label="Volume dos Anúncios"
+                value={volAnuncio}
+                onChange={setVolAnuncio}
+                color="var(--p1)"
+                icon={
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                  </svg>
+                }
+              />
+              <VolumeSlider
+                label="Volume de Outros Apps (Duck)"
+                value={volOutros}
+                onChange={setVolOutros}
+                color="var(--warn)"
+                icon={
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <line x1="23" y1="9" x2="17" y2="15"/>
+                    <line x1="17" y1="9" x2="23" y2="15"/>
+                  </svg>
+                }
+              />
+
+              {/* Fade duck ms */}
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Fade de Entrada/Saída (ms)</div>
+                  <div style={{
+                    fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700, color: "var(--cyan)",
+                    background: "rgba(34,211,238,0.1)", border: "1px solid rgba(34,211,238,0.25)",
+                    borderRadius: 6, padding: "2px 10px", minWidth: 54, textAlign: "center",
+                  }}>
+                    {fadeDuck}ms
+                  </div>
+                </div>
+                <div style={{ position: "relative", height: 6, borderRadius: 99, background: "var(--surface3)", border: "1px solid var(--border)" }}>
+                  <div style={{
+                    position: "absolute", left: 0, top: 0, height: "100%",
+                    width: `${((fadeDuck - 500) / 2500) * 100}%`, borderRadius: 99,
+                    background: "linear-gradient(90deg, rgba(34,211,238,0.6), var(--cyan))",
+                    transition: "width 0.1s",
+                  }} />
+                  <input
+                    type="range" min={500} max={3000} step={100} value={fadeDuck}
+                    onChange={e => setFadeDuck(Number(e.target.value))}
+                    style={{
+                      position: "absolute", inset: 0, width: "100%", height: "100%",
+                      opacity: 0, cursor: "pointer", margin: 0,
+                    }}
+                  />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                  <span style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: "var(--muted)" }}>500ms (rápido)</span>
+                  <span style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: "var(--muted)" }}>3000ms (suave)</span>
+                </div>
+              </div>
+
+              <button className="btn btn-primary" style={{ marginTop: 10, width: "100%", justifyContent: "center" }} onClick={save}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Salvar Configurações de Áudio
+              </button>
+            </ExpandCard>
+
+            {/* Pasta local */}
+            <ExpandCard
+              icon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+              }
+              label="Pasta Local de Mídias"
+              badge={`${cacheInfo?.files ?? 0} arquivo${(cacheInfo?.files ?? 0) !== 1 ? "s" : ""}`}
+              badgeColor="var(--muted2)"
+              badgeBg="var(--surface3)"
+            >
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--cyan)", marginBottom: 6 }}>{LOCAL_DIR}</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted2)" }}>
+                {cacheInfo?.files ?? 0} arquivo(s) · {((cacheInfo?.size || 0) / 1048576).toFixed(1)} MB
+              </div>
+            </ExpandCard>
+
+            {/* Iniciar com o sistema */}
+            <ExpandCard
+              icon={<IcoStartup />}
+              label="Iniciar com o Sistema"
+              badge={startupEnabled ? "ATIVO" : "INATIVO"}
+              badgeColor={startupEnabled ? "var(--green)" : "var(--muted)"}
+              badgeBg={startupEnabled ? "rgba(52,211,153,0.1)" : "var(--surface3)"}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", marginBottom: 3 }}>
+                    {startupEnabled
+                      ? "PlayAds abrirá automaticamente ao ligar o computador."
+                      : "Ative para o PlayAds iniciar automaticamente com o Windows."}
+                  </div>
+                  {startupMsg && (
+                    <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", marginTop: 4,
+                      color: isStartupErr ? "var(--danger)" : "var(--green)" }}>{startupMsg}</div>
+                  )}
+                </div>
+                <button
+                  onClick={handleStartupToggle}
+                  disabled={startupLoading}
+                  style={{
+                    position: "relative", width: 46, height: 26, borderRadius: 99,
+                    border: "none", cursor: startupLoading ? "default" : "pointer",
+                    background: startupEnabled ? "var(--green)" : "var(--surface3)",
+                    transition: "background 0.2s", flexShrink: 0,
+                    opacity: startupLoading ? 0.7 : 1,
+                  }}
+                >
+                  <span style={{
+                    position: "absolute", top: 3,
+                    left: startupEnabled ? "calc(100% - 23px)" : 3,
+                    width: 20, height: 20, borderRadius: "50%",
+                    background: "white", transition: "left 0.2s",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
+                  }} />
+                </button>
+              </div>
+              <div style={{
+                marginTop: 10, padding: "8px 10px", background: "var(--surface3)",
+                borderRadius: 7, border: "1px solid var(--border)",
+                fontSize: 9, color: "var(--muted)", fontFamily: "var(--font-mono)", lineHeight: 1.6,
+              }}>
+                Windows: <span style={{ color: "var(--cyan)" }}>Shell:startup</span> (PlayAds.bat)
+                &nbsp;·&nbsp; macOS: <span style={{ color: "var(--cyan)" }}>~/Library/LaunchAgents/</span>
+                &nbsp;·&nbsp; Linux: <span style={{ color: "var(--cyan)" }}>~/.config/autostart/</span>
+              </div>
+            </ExpandCard>
+
+            {/* Dependências */}
+            <ExpandCard
+              icon={<IcoDeps />}
+              label="Dependências do Sistema"
+            >
+              <DepsSection call={call} />
+            </ExpandCard>
+
+            {/* Painel Web */}
+            <ExpandCard
+              icon={<IcoWeb />}
+              label="Painel Web"
+              badge="Externo"
+              badgeColor="var(--cyan)"
+              badgeBg="rgba(34,211,238,0.1)"
+            >
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14, lineHeight: 1.6 }}>
+                Acesse o painel de controle web para gerenciar playlists, agendamentos e anúncios de qualquer dispositivo.
+              </div>
+              <a
+                href="https://anucio-web.web.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "12px 16px",
+                  background: "rgba(34,211,238,0.08)",
+                  border: "1px solid rgba(34,211,238,0.25)",
+                  borderRadius: 10, textDecoration: "none",
+                  transition: "background 0.15s, border-color 0.15s",
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "rgba(34,211,238,0.14)";
+                  e.currentTarget.style.borderColor = "rgba(34,211,238,0.5)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "rgba(34,211,238,0.08)";
+                  e.currentTarget.style.borderColor = "rgba(34,211,238,0.25)";
+                }}
+              >
+                <div style={{
+                  width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                  background: "rgba(34,211,238,0.12)", border: "1px solid rgba(34,211,238,0.3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <IcoWeb />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--cyan)" }}>anucio-web.web.app</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--font-mono)", marginTop: 1 }}>
+                    Painel de controle · Playlists · Agendamentos
+                  </div>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" strokeWidth="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                  <polyline points="15 3 21 3 21 9"/>
+                  <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+              </a>
+            </ExpandCard>
+
+            {/* Atualização */}
+            <ExpandCard
+              icon={<IcoUpdate />}
+              label="Atualização do Software"
+              badge="v7.0"
+              badgeColor="var(--p1)"
+              badgeBg="rgba(139,92,246,0.12)"
+            >
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14, lineHeight: 1.6 }}>
+                Verifique se há uma versão mais recente do PlayAds disponível para download.
+              </div>
+              <a
+                href="https://play-ads-releasse.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "12px 16px",
+                  background: "rgba(139,92,246,0.08)",
+                  border: "1px solid rgba(139,92,246,0.25)",
+                  borderRadius: 10, textDecoration: "none",
+                  transition: "background 0.15s, border-color 0.15s",
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "rgba(139,92,246,0.14)";
+                  e.currentTarget.style.borderColor = "rgba(139,92,246,0.5)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "rgba(139,92,246,0.08)";
+                  e.currentTarget.style.borderColor = "rgba(139,92,246,0.25)";
+                }}
+              >
+                <div style={{
+                  width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                  background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "var(--p1)",
+                }}>
+                  <IcoUpdate />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--p1)" }}>play-ads-releasse.vercel.app</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--font-mono)", marginTop: 1 }}>
+                    Baixar versão mais recente
+                  </div>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--p1)" strokeWidth="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                  <polyline points="15 3 21 3 21 9"/>
+                  <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+              </a>
+            </ExpandCard>
+
+          </div>
+
         </div>
-
-        <button className="btn btn-primary" style={{ marginTop: 8, marginBottom: 28 }} onClick={save}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          Salvar Configurações
-        </button>
-
-        {/* ── Dependências ── */}
-        <DepsSection call={call} />
       </div>
     </div>
   );
@@ -323,19 +805,11 @@ export function ConfigPage() {
 //  ACCOUNT PAGE
 // ══════════════════════════════════════════════════════════════════
 
-// Ícones
 const IcoLogout = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
     <polyline points="16 17 21 12 16 7"/>
     <line x1="21" y1="12" x2="9" y2="12"/>
-  </svg>
-);
-const IcoInfo = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="12" y1="16" x2="12" y2="12"/>
-    <line x1="12" y1="8" x2="12.01" y2="8"/>
   </svg>
 );
 
@@ -370,6 +844,16 @@ const PLATFORMS = [
   },
 ];
 
+function IcoInfo() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="16" x2="12" y2="12"/>
+      <line x1="12" y1="8" x2="12.01" y2="8"/>
+    </svg>
+  );
+}
+
 function IntegrationCard({ platform, connected, onConnect, onDisconnect }) {
   const [showNote, setShowNote] = useState(false);
   return (
@@ -387,7 +871,6 @@ function IntegrationCard({ platform, connected, onConnect, onDisconnect }) {
       }}>
         {platform.icon}
       </div>
-
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{platform.name}</span>
@@ -417,7 +900,6 @@ function IntegrationCard({ platform, connected, onConnect, onDisconnect }) {
           </div>
         )}
       </div>
-
       <div style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center", marginTop: 2 }}>
         <button onClick={() => setShowNote(v => !v)} style={{
           background: "var(--surface3)", border: "1px solid var(--border)",
@@ -425,7 +907,6 @@ function IntegrationCard({ platform, connected, onConnect, onDisconnect }) {
           color: showNote ? "var(--p1)" : "var(--muted)",
           display: "flex", alignItems: "center",
         }}><IcoInfo /></button>
-
         {connected ? (
           <button onClick={() => onDisconnect(platform.id)} style={{
             background: "rgba(244,63,94,.1)", border: "1px solid rgba(244,63,94,.2)",
@@ -464,30 +945,8 @@ function SectionLabel({ children }) {
 
 export function AccountPage() {
   const { state, call } = useApp();
-  const { account, cacheInfo } = state;
-  const LOCAL_DIR = window.__playads_local_dir || "local/";
-
-  const [startupEnabled, setStartupEnabled] = useState(false);
-  const [startupLoading, setStartupLoading] = useState(false);
-  const [startupMsg,     setStartupMsg]     = useState("");
+  const { account } = state;
   const [connectedPlats, setConnectedPlats] = useState([]);
-
-  useEffect(() => {
-    call("get_startup_status").then(r => { if (r != null) setStartupEnabled(!!r); }).catch(() => {});
-  }, []);
-
-  const handleStartupToggle = async () => {
-    setStartupLoading(true); setStartupMsg("");
-    try {
-      const res = await call("toggle_startup", !startupEnabled);
-      if (res?.ok) { setStartupEnabled(v => !v); setStartupMsg(res.msg || ""); }
-      else setStartupMsg(res?.error || "Não foi possível alterar.");
-    } catch { setStartupMsg("Erro ao alterar."); }
-    finally {
-      setStartupLoading(false);
-      setTimeout(() => setStartupMsg(""), 5000);
-    }
-  };
 
   const handleConnect    = async (id) => {
     const res = await call("connect_platform", id).catch(() => null);
@@ -504,22 +963,19 @@ export function AccountPage() {
       call("cmd_disconnect");
   };
 
-  const isError = startupMsg.toLowerCase().includes("erro") || startupMsg.includes("possível");
-
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
       <div className="page-header">
         <div className="page-header-accent" style={{ background: "var(--p1)" }} />
         <span className="page-title">Conta</span>
-        <span className="page-sub">Ativação e configurações</span>
+        <span className="page-sub">Ativação e status</span>
       </div>
 
       <div style={{ overflowY: "auto", flex: 1 }}>
         <div className="account-layout">
 
-          {/* Conta */}
           <SectionLabel>Conta Ativada</SectionLabel>
-          <div className="account-info-grid" style={{ marginBottom: 24 }}>
+          <div className="account-info-grid" style={{ marginBottom: 28 }}>
             {[["E-mail", account?.email||"—"],["Código", account?.codigo||"—"],
               ["Status", account?.connected ? "● Ativo" : "Inativo"],["Versão","7.0"]]
               .map(([l, v]) => (
@@ -530,75 +986,6 @@ export function AccountPage() {
               ))}
           </div>
 
-          {/* Pasta local */}
-          <SectionLabel>Pasta Local</SectionLabel>
-          <div className="card" style={{ marginBottom: 24 }}>
-            <div className="card-body">
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--cyan)", marginBottom: 6 }}>{LOCAL_DIR}</div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted2)" }}>
-                {cacheInfo?.files ?? 0} arquivo(s) · {((cacheInfo?.size||0)/1048576).toFixed(1)} MB
-              </div>
-            </div>
-          </div>
-
-          {/* Startup */}
-          <SectionLabel>Sistema</SectionLabel>
-          <div className="card" style={{ marginBottom: 24 }}>
-            <div className="card-body" style={{ padding: "14px 16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 9, flexShrink: 0,
-                  background: startupEnabled ? "rgba(52,211,153,.12)" : "var(--surface3)",
-                  border: `1px solid ${startupEnabled ? "rgba(52,211,153,.3)" : "var(--border)"}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "all .25s",
-                }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke={startupEnabled ? "var(--green)" : "var(--muted)"} strokeWidth="2">
-                    <polyline points="23 4 23 10 17 10"/>
-                    <path d="M20.49 15A9 9 0 1 1 5.64 5.64L12 12"/>
-                  </svg>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>Iniciar com o Sistema</div>
-                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                    {startupEnabled ? "PlayAds abre automaticamente ao ligar o PC." : "Ative para iniciar junto com o Windows."}
-                  </div>
-                  {startupMsg && (
-                    <div style={{ marginTop: 4, fontSize: 10, fontFamily: "var(--font-mono)",
-                      color: isError ? "var(--danger)" : "var(--green)" }}>{startupMsg}</div>
-                  )}
-                </div>
-                {/* Toggle */}
-                <button onClick={handleStartupToggle} disabled={startupLoading} style={{
-                  position: "relative", width: 44, height: 24, borderRadius: 99,
-                  border: "none", cursor: startupLoading ? "default" : "pointer",
-                  background: startupEnabled ? "var(--green)" : "var(--surface3)",
-                  transition: "background .2s", flexShrink: 0, opacity: startupLoading ? 0.7 : 1,
-                }}>
-                  <span style={{
-                    position: "absolute", top: 2,
-                    left: startupEnabled ? "calc(100% - 21px)" : 2,
-                    width: 20, height: 20, borderRadius: "50%",
-                    background: "white", transition: "left .2s",
-                    boxShadow: "0 1px 4px rgba(0,0,0,.35)",
-                  }} />
-                </button>
-              </div>
-              {/* Nota técnica */}
-              <div style={{
-                marginTop: 10, padding: "7px 10px", background: "var(--surface3)",
-                borderRadius: 7, border: "1px solid var(--border)",
-                fontSize: 9, color: "var(--muted)", fontFamily: "var(--font-mono)", lineHeight: 1.6,
-              }}>
-                Windows: <span style={{ color: "var(--cyan)" }}>Shell:startup</span> (PlayAds.bat)
-                &nbsp;·&nbsp; macOS: <span style={{ color: "var(--cyan)" }}>~/Library/LaunchAgents/</span>
-                &nbsp;·&nbsp; Linux: <span style={{ color: "var(--cyan)" }}>~/.config/autostart/</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Integrações */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <SectionLabel>Integrar Contas de Música</SectionLabel>
             <span style={{
@@ -618,7 +1005,7 @@ export function AccountPage() {
             pause/resume preciso por plataforma.
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
             {PLATFORMS.map(p => (
               <IntegrationCard key={p.id} platform={p}
                 connected={connectedPlats.includes(p.id)}
@@ -626,7 +1013,6 @@ export function AccountPage() {
             ))}
           </div>
 
-          {/* Desconectar */}
           <div className="warn-banner" style={{ marginBottom: 14 }}>
             Desconectar apaga activation.json, todos os JSONs, arquivos em local/ e remove o início automático.
           </div>

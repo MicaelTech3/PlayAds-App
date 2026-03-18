@@ -898,6 +898,8 @@ def restart_app():
 #  BRIDGE
 # ═════════════════════════════════════════════════════════════════════════════
 class Bridge:
+
+    
     def get_events(self):
         events = []
         try:
@@ -916,6 +918,7 @@ class Bridge:
             "config":    cfg,
             "local_dir": str(LOCAL_DIR),
             "schedules": load_schedules(),
+
         }
 
     def play_item_now(self, item_dict):
@@ -1152,7 +1155,6 @@ def main():
         )
 
     webview.start(debug=False)
-
 
 if __name__ == "__main__":
     main()
